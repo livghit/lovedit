@@ -20,12 +20,24 @@ class BookController extends Controller
         $query = $validated['query'] ?? null;
         $author = $validated['author'] ?? null;
 
-        $results = $query ? $this->searchService->search($query, $author) : [];
+        if ($query) {
+            $results = $this->searchService->search($query, $author);
+
+            return Inertia::render('books/search', [
+                'results' => $results,
+                'query' => $query,
+                'books' => null,
+            ]);
+        }
+
+        $books = Inertia::scroll(fn () => Book::query()->latest('id')->paginate(12));
 
         return Inertia::render('books/search', [
-            'results' => $results,
-            'query' => $query,
+            'results' => [],
+            'query' => null,
+            'books' => $books,
         ]);
+
     }
 
     public function show(Book $book): Response
@@ -46,7 +58,7 @@ class BookController extends Controller
     {
         $validated = $request->validated();
 
-        if (!empty($validated['external_id'])) {
+        if (! empty($validated['external_id'])) {
             $existingBook = Book::where('external_id', $validated['external_id'])->first();
             if ($existingBook) {
                 return response()->json(['data' => $existingBook], 200);

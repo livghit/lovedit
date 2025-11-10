@@ -26,23 +26,29 @@ export default function BookCard({ book, onClick, className }: BookCardProps) {
         >
             <CardContent className="p-0">
                 <div className="flex h-full flex-col">
-                    {book.cover_url ? (
-                        <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted">
-                            <img
-                                src={book.cover_url}
-                                alt={book.title}
-                                className="h-full w-full object-cover"
-                            />
-                        </div>
-                    ) : (
-                        <div className="flex aspect-[2/3] w-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/20">
-                            <div className="px-4 py-8 text-center">
-                                <div className="text-sm font-medium text-muted-foreground">
-                                    No Cover
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted">
+                        <img
+                            src={(function () {
+                                const placeholder =
+                                    'https://placehold.co/600x900?text=No%20Cover';
+                                const url = book.cover_url ?? '';
+                                if (!url) return placeholder;
+                                if (url.includes('placeholder.com'))
+                                    return placeholder;
+                                return url;
+                            })()}
+                            alt={book.title}
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                                const img = e.currentTarget as HTMLImageElement;
+                                if ((img as any).dataset.fallbackApplied)
+                                    return;
+                                (img as any).dataset.fallbackApplied = 'true';
+                                img.src =
+                                    'https://placehold.co/600x900?text=No%20Cover';
+                            }}
+                        />
+                    </div>
 
                     <div className="flex flex-1 flex-col gap-2 p-3">
                         <div>

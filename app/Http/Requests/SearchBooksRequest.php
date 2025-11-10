@@ -14,7 +14,7 @@ class SearchBooksRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'query' => ['required', 'string', 'min:2', 'max:255'],
+            'query' => ['nullable', 'string', 'min:2', 'max:255'],
             'author' => ['nullable', 'string', 'max:255'],
         ];
     }
@@ -22,7 +22,7 @@ class SearchBooksRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'query.required' => 'Search query is required.',
+            'query.required' => 'Search query is required.', // Keeping message though query now nullable
             'query.min' => 'Search query must be at least 2 characters.',
         ];
     }

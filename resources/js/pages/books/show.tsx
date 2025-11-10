@@ -90,23 +90,31 @@ export default function BooksShow({
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
                     {/* Book Cover */}
                     <div className="md:col-span-1">
-                        {book.cover_url ? (
-                            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg shadow-lg">
-                                <img
-                                    src={book.cover_url}
-                                    alt={book.title}
-                                    className="h-full w-full object-cover"
-                                />
-                            </div>
-                        ) : (
-                            <div className="flex aspect-[2/3] w-full items-center justify-center rounded-lg bg-gradient-to-br from-muted to-muted-foreground/20 shadow-lg">
-                                <div className="px-4 text-center">
-                                    <div className="text-sm font-medium text-muted-foreground">
-                                        No Cover Available
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg shadow-lg">
+                            <img
+                                src={(function () {
+                                    const placeholder =
+                                        'https://placehold.co/600x900?text=No%20Cover';
+                                    const url = book.cover_url ?? '';
+                                    if (!url) return placeholder;
+                                    if (url.includes('placeholder.com'))
+                                        return placeholder;
+                                    return url;
+                                })()}
+                                alt={book.title}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                    const img =
+                                        e.currentTarget as HTMLImageElement;
+                                    if ((img as any).dataset.fallbackApplied)
+                                        return;
+                                    (img as any).dataset.fallbackApplied =
+                                        'true';
+                                    img.src =
+                                        'https://placehold.co/600x900?text=No%20Cover';
+                                }}
+                            />
+                        </div>
                     </div>
 
                     {/* Book Details */}

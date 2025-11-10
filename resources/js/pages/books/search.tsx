@@ -5,7 +5,7 @@ import { LoadingGrid } from '@/components/Skeletons';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Book {
     id: string | number;
@@ -15,9 +15,17 @@ interface Book {
     isbn?: string;
 }
 
+interface Paginator<T> {
+    data: T[];
+    next_page_url?: string | null;
+    prev_page_url?: string | null;
+    links?: { url: string | null; label: string; active: boolean }[];
+}
+
 interface BooksSearchProps {
     results?: Book[];
-    query?: string;
+    query?: string | null;
+    books?: Paginator<Book> | null;
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -29,14 +37,22 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function BooksSearch({
     results = [],
-    query = '',
+    query = null,
+    books = null,
 }: BooksSearchProps) {
-    const [searchQuery, setSearchQuery] = useState(query);
+    // Ensure local state is always a string
+    const [searchQuery, setSearchQuery] = useState<string>(query ?? '');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Keep local state in sync when server-provided query changes between visits
+    useEffect(() => {
+        setSearchQuery(query ?? '');
+    }, [query]);
+
     const handleSearch = async () => {
-        if (!searchQuery.trim()) return;
+        const trimmed = searchQuery.trim();
+        if (!trimmed) return; // still prevent empty queries
 
         setIsLoading(true);
         setError(null);
@@ -44,7 +60,7 @@ export default function BooksSearch({
         try {
             router.get(
                 '/books/search',
-                { query: searchQuery },
+                { query: trimmed },
                 {
                     onError: () => {
                         setError('Failed to search books. Please try again.');
@@ -113,6 +129,44 @@ export default function BooksSearch({
                     </>
                 ) : searchQuery ? (
                     <NoResultsState />
+                ) : books && books.data.length > 0 ? (
+                    <>
+                        <div className="text-sm text-muted-foreground">
+                            Showing latest books
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {books.data.map((book) => (
+                                <BookCard
+                                    key={book.id}
+                                    book={book}
+                                    onClick={() => handleBookClick(book)}
+                                />
+                            ))}
+                        </div>
+                        {books.links && books.links.length > 0 && (
+                            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                                {books.links
+                                    .filter(
+                                        (l) =>
+                                            l.label !== '&laquo; Previous' &&
+                                            l.label !== 'Next &raquo;',
+                                    )
+                                    .map((link, idx) => (
+                                        <button
+                                            key={idx}
+                                            disabled={!link.url}
+                                            onClick={() =>
+                                                link.url &&
+                                                router.visit(link.url)
+                                            }
+                                            className={`rounded px-3 py-1 text-sm transition-colors ${link.active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/70'} disabled:opacity-40`}
+                                        >
+                                            {link.label}
+                                        </button>
+                                    ))}
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div className="py-12 text-center">
                         <p className="text-sm text-muted-foreground">

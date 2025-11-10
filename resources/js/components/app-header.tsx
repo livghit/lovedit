@@ -32,7 +32,15 @@ import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-react';
+import {
+    BookOpen,
+    Folder,
+    LayoutGrid,
+    ListTodo,
+    Menu,
+    PenTool,
+    Search,
+} from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 
@@ -41,6 +49,21 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Search Books',
+        href: '/books/search',
+        icon: BookOpen,
+    },
+    {
+        title: 'Reviews',
+        href: '/reviews',
+        icon: PenTool,
+    },
+    {
+        title: 'To-Review List',
+        href: '/to-review-lists',
+        icon: ListTodo,
     },
 ];
 
@@ -190,6 +213,11 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                 variant="ghost"
                                 size="icon"
                                 className="group h-9 w-9 cursor-pointer"
+                                onClick={() =>
+                                    (window as any).Inertia?.visit(
+                                        '/books/search',
+                                    )
+                                }
                             >
                                 <Search className="!size-5 opacity-80 group-hover:opacity-100" />
                             </Button>
