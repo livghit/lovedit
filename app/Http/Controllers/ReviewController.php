@@ -5,65 +5,80 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreReviewRequest;
 use App\Http\Requests\UpdateReviewRequest;
 use App\Models\Review;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class ReviewController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(): Response
     {
         $reviews = auth()->user()->reviews()->with('book')->latest()->get();
 
-        return response()->json([
-            'data' => $reviews,
+        return Inertia::render('reviews/index', [
+            'reviews' => $reviews,
         ]);
     }
 
-    public function show(Review $review): JsonResponse
+    public function create(): Response
     {
-        $this->authorize('view', $review);
-
-        return response()->json([
-            'data' => $review->load('book'),
-        ]);
+        return Inertia::render('reviews/form');
     }
 
-    public function store(StoreReviewRequest $request): JsonResponse
+    public function store(StoreReviewRequest $request): RedirectResponse
     {
-        // Check if user already reviewed this book
+        $validated = $request->validated();
+
         $existingReview = Review::where('user_id', auth()->id())
-            ->where('book_id', $request->validated('book_id'))
+            ->where('book_id', $validated['book_id'])
             ->first();
 
         if ($existingReview) {
-            return response()->json([
-                'error' => 'You have already reviewed this book.',
-            ], 422);
+            return back()->withErrors([
+                'book_id' => 'You have already reviewed this book.',
+            ]);
         }
 
-        $review = auth()->user()->reviews()->create($request->validated());
+        auth()->user()->reviews()->create($validated);
 
-        return response()->json([
-            'data' => $review->load('book'),
-        ], 201);
+        return redirect()->route('reviews.index');
     }
 
-    public function update(Review $review, UpdateReviewRequest $request): JsonResponse
+    public function show(Review $review): Response
+    {
+        $this->authorize('view', $review);
+
+        return Inertia::render('reviews/show', [
+            'review' => $review->load('book'),
+        ]);
+    }
+
+    public function edit(Review $review): Response
+    {
+        $this->authorize('update', $review);
+
+        return Inertia::render('reviews/form', [
+            'review' => $review,
+            'book' => $review->book,
+            'isEdit' => true,
+        ]);
+    }
+
+    public function update(Review $review, UpdateReviewRequest $request): RedirectResponse
     {
         $this->authorize('update', $review);
 
         $review->update($request->validated());
 
-        return response()->json([
-            'data' => $review->load('book'),
-        ]);
+        return redirect()->route('reviews.show', $review);
     }
 
-    public function destroy(Review $review): JsonResponse
+    public function destroy(Review $review): RedirectResponse
     {
         $this->authorize('delete', $review);
 
         $review->delete();
 
-        return response()->json(null, 204);
+        return redirect()->route('reviews.index');
     }
 }

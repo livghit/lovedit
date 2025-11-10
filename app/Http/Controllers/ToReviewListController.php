@@ -2,67 +2,69 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreReviewRequest;
+use App\Http\Requests\MarkReviewedRequest;
 use App\Http\Requests\StoreToReviewRequest;
 use App\Models\ToReviewList;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class ToReviewListController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(): Response
     {
         $items = auth()->user()->toReviewLists()->with('book')->pending()->get();
 
-        return response()->json([
-            'data' => $items,
+        return Inertia::render('to-review-lists/index', [
+            'items' => $items,
         ]);
     }
 
-    public function store(StoreToReviewRequest $request): JsonResponse
+    public function store(StoreToReviewRequest $request): RedirectResponse
     {
-        // Check if already in to-review list
+        $validated = $request->validated();
+
         $existing = ToReviewList::where('user_id', auth()->id())
-            ->where('book_id', $request->validated('book_id'))
+            ->where('book_id', $validated['book_id'])
             ->first();
 
         if ($existing) {
-            return response()->json([
-                'error' => 'Book is already in your to-review list.',
-            ], 422);
+            return back()->withErrors([
+                'book_id' => 'Book is already in your to-review list.',
+            ]);
         }
 
-        $item = auth()->user()->toReviewLists()->create($request->validated());
+        auth()->user()->toReviewLists()->create([
+            'book_id' => $validated['book_id'],
+            'added_at' => now(),
+        ]);
 
-        return response()->json([
-            'data' => $item->load('book'),
-        ], 201);
+        return redirect()->route('to-review-lists.index');
     }
 
-    public function destroy(ToReviewList $toReviewList): JsonResponse
+    public function destroy(ToReviewList $toReviewList): RedirectResponse
     {
         $this->authorize('delete', $toReviewList);
 
         $toReviewList->delete();
 
-        return response()->json(null, 204);
+        return redirect()->route('to-review-lists.index');
     }
 
-    public function markReviewed(ToReviewList $toReviewList, StoreReviewRequest $request): JsonResponse
+    public function markReviewed(ToReviewList $toReviewList, MarkReviewedRequest $request): RedirectResponse
     {
         $this->authorize('update', $toReviewList);
 
-        // Create the review
-        $review = auth()->user()->reviews()->create([
+        $validated = $request->validated();
+
+        auth()->user()->reviews()->create([
             'book_id' => $toReviewList->book_id,
-            'rating' => $request->validated('rating'),
-            'content' => $request->validated('content'),
+            'rating' => $validated['rating'],
+            'content' => $validated['content'],
         ]);
 
-        // Remove from to-review list
         $toReviewList->delete();
 
-        return response()->json([
-            'data' => $review->load('book'),
-        ], 201);
+        return redirect()->route('reviews.index');
     }
 }
