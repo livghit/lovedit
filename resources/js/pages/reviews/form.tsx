@@ -1,5 +1,5 @@
 import { EmptyState } from '@/components/EmptyState';
-import MarkdownEditor from '@/components/MarkdownEditor';
+import ReviewEditor from '@/components/ReviewEditor';
 import StarRating from '@/components/StarRating';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,7 +41,7 @@ export default function ReviewForm({
     books = [],
     selectedBookId = null,
 }: ReviewFormProps) {
-    // Removed local preview toggle (handled inside MarkdownEditor)
+    // Removed local preview toggle (handled inside editor)
     const [rating, setRating] = React.useState(review?.rating ?? 0);
     const [content, setContent] = React.useState(review?.content ?? '');
     const [bookId, setBookId] = React.useState<string | number | undefined>(
@@ -264,7 +264,7 @@ export default function ReviewForm({
                                     </label>
                                 </div>
 
-                                <MarkdownEditor
+                                <ReviewEditor
                                     id="content"
                                     name="content"
                                     value={content}
