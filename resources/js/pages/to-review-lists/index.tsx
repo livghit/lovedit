@@ -1,6 +1,22 @@
+import {
+    destroy,
+    markReviewed,
+} from '@/actions/App/Http/Controllers/ToReviewListController';
 import BookCard from '@/components/BookCard';
 import { NoToReviewState } from '@/components/EmptyState';
+import StarRating from '@/components/StarRating';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
@@ -31,15 +47,40 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+import React from 'react';
 export default function ToReviewListIndex({ items }: ToReviewListIndexProps) {
     const handleRemove = (itemId: string | number) => {
         if (confirm('Remove this book from your to-review list?')) {
-            router.delete(`/to-review-lists/${itemId}`);
+            router.delete(destroy.url(Number(itemId)));
         }
     };
 
+    const [openId, setOpenId] = React.useState<string | number | null>(null);
+    const [rating, setRating] = React.useState<number>(0);
+    const [content, setContent] = React.useState<string>('');
+
+    const resetForm = () => {
+        setRating(0);
+        setContent('');
+    };
+
     const handleMarkReviewed = (itemId: string | number) => {
-        router.post(`/to-review-lists/${itemId}/mark-reviewed`);
+        router.post(
+            markReviewed.url(Number(itemId)),
+            {
+                rating,
+                content,
+            },
+            {
+                onSuccess: () => {
+                    setOpenId(null);
+                    resetForm();
+                },
+                onError: () => {
+                    // Keep dialog open; errors will be shown via page props after Inertia re-render
+                },
+            },
+        );
     };
 
     const handleViewBook = (book: Book) => {
@@ -79,15 +120,105 @@ export default function ToReviewListIndex({ items }: ToReviewListIndexProps) {
 
                                 {/* Actions Overlay */}
                                 <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-lg bg-black/50 p-2 opacity-0 transition-opacity group-hover:opacity-100">
-                                    <Button
-                                        size="sm"
-                                        variant="secondary"
-                                        onClick={() =>
-                                            handleMarkReviewed(item.id)
-                                        }
+                                    <Dialog
+                                        open={openId === item.id}
+                                        onOpenChange={(open) => {
+                                            if (open) {
+                                                setOpenId(item.id);
+                                            } else {
+                                                setOpenId(null);
+                                                resetForm();
+                                            }
+                                        }}
                                     >
-                                        Mark Reviewed
-                                    </Button>
+                                        <DialogTrigger asChild>
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                onClick={() =>
+                                                    setOpenId(item.id)
+                                                }
+                                            >
+                                                Review
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>
+                                                    Quick Review
+                                                </DialogTitle>
+                                                <DialogDescription>
+                                                    {item.book.title} by{' '}
+                                                    {item.book.author}
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium">
+                                                        Rating
+                                                    </label>
+                                                    <StarRating
+                                                        rating={rating}
+                                                        onRatingChange={
+                                                            setRating
+                                                        }
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {rating > 0
+                                                            ? `${rating}/5 stars`
+                                                            : 'Select a rating'}
+                                                    </p>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label
+                                                        htmlFor="content"
+                                                        className="text-sm font-medium"
+                                                    >
+                                                        Review
+                                                    </label>
+                                                    <Textarea
+                                                        id="content"
+                                                        value={content}
+                                                        onChange={(e) =>
+                                                            setContent(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        placeholder="Share a brief review (min 10 characters)"
+                                                        className="min-h-[140px]"
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Minimum 10 characters.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <DialogFooter>
+                                                <DialogClose asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        type="button"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </DialogClose>
+                                                <Button
+                                                    type="button"
+                                                    disabled={
+                                                        rating < 1 ||
+                                                        content.trim().length <
+                                                            10
+                                                    }
+                                                    onClick={() =>
+                                                        handleMarkReviewed(
+                                                            item.id,
+                                                        )
+                                                    }
+                                                >
+                                                    Publish Review
+                                                </Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
                                     <Button
                                         size="sm"
                                         variant="destructive"
