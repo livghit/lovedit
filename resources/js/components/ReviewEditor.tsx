@@ -1,10 +1,15 @@
 'use client';
 
-import '@/components/tiptap-templates/simple/simple-editor.scss';
 import { EditorContent, EditorContext, useEditor } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
 import React from 'react';
 
+import { Button } from '@/components/tiptap-ui-primitive/button';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/tiptap-ui-primitive/popover';
 import { Spacer } from '@/components/tiptap-ui-primitive/spacer';
 import {
     Toolbar,
@@ -162,6 +167,39 @@ function nodeToMarkdown(node: any): string {
     }
 }
 
+const EMOJIS = [
+    '😀',
+    '😁',
+    '😂',
+    '🤣',
+    '😊',
+    '😍',
+    '😘',
+    '😎',
+    '🤩',
+    '😇',
+    '🙂',
+    '🤔',
+    '😴',
+    '🤗',
+    '🙌',
+    '👍',
+    '👎',
+    '👏',
+    '🔥',
+    '💯',
+    '🎉',
+    '🥳',
+    '✨',
+    '⭐',
+    '🌟',
+    '❤️',
+    '💙',
+    '💚',
+    '💛',
+    '💜',
+];
+
 export default function ReviewEditor({
     id,
     name,
@@ -185,7 +223,7 @@ export default function ReviewEditor({
                 autocomplete: 'off',
                 autocorrect: 'off',
                 autocapitalize: 'off',
-                class: 'simple-editor',
+                class: 'prose max-w-none p-3 sm:p-4 min-h-[12rem] focus:outline-none dark:prose-invert',
             },
         },
         onUpdate: ({ editor }) => {
@@ -207,6 +245,8 @@ export default function ReviewEditor({
 
     const words = (value.trim().match(/\S+/g) || []).length;
     const chars = value.length;
+
+    const [showPreview, setShowPreview] = React.useState(false);
 
     return (
         <div className="space-y-2">
@@ -235,6 +275,58 @@ export default function ReviewEditor({
                         <MarkButton type="italic" />
                         <MarkButton type="code" />
                         <LinkPopover />
+                        {/* Emoji picker */}
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    aria-label="Insert emoji"
+                                    tooltip="Emoji"
+                                >
+                                    <span className="tiptap-button-emoji">
+                                        😊
+                                    </span>
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent aria-label="Emoji picker">
+                                <div className="grid grid-cols-8 gap-2 p-1">
+                                    {EMOJIS.map((e) => (
+                                        <button
+                                            key={e}
+                                            type="button"
+                                            className="flex h-8 w-8 items-center justify-center rounded hover:bg-muted"
+                                            onClick={() => {
+                                                if (!editor) return;
+                                                editor
+                                                    .chain()
+                                                    .focus()
+                                                    .insertContent(e)
+                                                    .run();
+                                            }}
+                                            aria-label={`Insert ${e}`}
+                                        >
+                                            {e}
+                                        </button>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </ToolbarGroup>
+
+                    <ToolbarSeparator />
+
+                    <ToolbarGroup>
+                        <Button
+                            type="button"
+                            aria-label={
+                                showPreview ? 'Hide preview' : 'Show preview'
+                            }
+                            tooltip={
+                                showPreview ? 'Hide Preview' : 'Show Preview'
+                            }
+                            onClick={() => setShowPreview((p) => !p)}
+                        >
+                            {showPreview ? 'Edit' : 'Preview'}
+                        </Button>
                     </ToolbarGroup>
 
                     <Spacer />
@@ -247,15 +339,35 @@ export default function ReviewEditor({
                     </ToolbarGroup>
                 </Toolbar>
 
-                <div className="simple-editor-wrapper">
-                    <EditorContent
-                        id={id}
-                        editor={editor}
-                        className="simple-editor-content"
-                        role="textbox"
-                        aria-multiline="true"
-                    />
-                </div>
+                {showPreview ? (
+                    <div
+                        className="dark:prose-invert rounded-lg border bg-background p-4 text-sm"
+                        aria-label="Rendered markdown preview"
+                    >
+                        {value.trim() ? (
+                            <div
+                                className="prose dark:prose-invert max-w-none"
+                                dangerouslySetInnerHTML={{
+                                    __html: basicMarkdownToHtml(value),
+                                }}
+                            />
+                        ) : (
+                            <p className="text-xs text-muted-foreground">
+                                Nothing to preview yet. Start typing above.
+                            </p>
+                        )}
+                    </div>
+                ) : (
+                    <div className="rounded-lg border bg-background shadow-sm focus-within:ring-2 focus-within:ring-primary/20">
+                        <EditorContent
+                            id={id}
+                            editor={editor}
+                            className="min-h-[12rem]"
+                            role="textbox"
+                            aria-multiline="true"
+                        />
+                    </div>
+                )}
             </EditorContext.Provider>
 
             {name && <input type="hidden" name={name} value={value} />}
@@ -268,7 +380,8 @@ export default function ReviewEditor({
 
             <p className="text-xs text-muted-foreground">
                 Plain Markdown is stored. Supported: headings, lists, bold,
-                italic, inline code, links. Minimum {minLength} characters.
+                italic, inline code, links, and emojis. Minimum {minLength}{' '}
+                characters. Use the preview toggle to see rendered output.
             </p>
         </div>
     );
