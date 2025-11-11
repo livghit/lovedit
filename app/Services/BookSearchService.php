@@ -2,15 +2,21 @@
 
 namespace App\Services;
 
+use App\Data\SearchResult;
 use App\Models\Book;
 use App\Models\BookCacheMetadata;
+use App\Models\SyncBatch;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Storage;
 
 class BookSearchService
 {
     protected const OPENLIBRARY_API = 'https://openlibrary.org/search.json';
+
+    protected const OPENLIBRARY_COVERS_API = 'https://covers.openlibrary.org/b/id';
 
     protected const CACHE_DURATION_SEARCH = 60 * 60 * 72; // 72 hours for search results
 
@@ -20,14 +26,188 @@ class BookSearchService
 
     protected const RATE_LIMIT_PER_MINUTE = 30;
 
+    public function __construct(private BookImportService $importService) {}
+
     /**
-     * Search for books from Open Library API
+     * Hybrid search: Try local first, optionally search online
+     */
+    public function search(string $query, bool $forceOnline = false): SearchResult
+    {
+        if ($forceOnline) {
+            return $this->searchOnline($query);
+        }
+
+        $localResults = $this->searchLocal($query);
+
+        if ($localResults->books->isNotEmpty() || $localResults->hasOnlineOption === false) {
+            return $localResults;
+        }
+
+        return $localResults;
+    }
+
+    /**
+     * Search local database for books
+     */
+    public function searchLocal(string $query): SearchResult
+    {
+        $books = Book::where('title', 'LIKE', "%{$query}%")
+            ->orWhere('author', 'LIKE', "%{$query}%")
+            ->limit(20)
+            ->get();
+
+        // Increment search count for found books
+        $books->each(fn ($book) => $book->incrementSearchCount());
+
+        return SearchResult::local($books, $query);
+    }
+
+    /**
+     * Search Open Library API and save results
+     */
+    public function searchOnline(string $query): SearchResult
+    {
+        $cacheKey = $this->getCacheKey('search', $query);
+
+        // Store both formatted and raw results
+        $cached = Cache::remember($cacheKey, self::CACHE_DURATION_SEARCH, function () use ($query) {
+            // Check rate limit
+            if (! $this->checkRateLimit()) {
+                \Log::warning('Book search rate limit exceeded', ['query' => $query]);
+
+                return ['raw' => [], 'formatted' => []];
+            }
+
+            try {
+                $response = Http::timeout(10)->get(self::OPENLIBRARY_API, [
+                    'q' => $query,
+                    'limit' => 20,
+                ]);
+
+                if ($response->failed()) {
+                    return ['raw' => [], 'formatted' => []];
+                }
+
+                $data = $response->json();
+                $raw = $data['docs'] ?? [];
+
+                return [
+                    'raw' => $raw,
+                    'formatted' => $this->formatSearchResults($data),
+                ];
+            } catch (\Exception $e) {
+                \Log::error('Book search failed: '.$e->getMessage());
+
+                return ['raw' => [], 'formatted' => []];
+            }
+        });
+
+        // Save results to database
+        if (! empty($cached['raw'])) {
+            $this->saveSearchResults(collect($cached['raw']));
+        }
+
+        // Fetch the saved books from DB
+        $books = Book::where('title', 'LIKE', "%{$query}%")
+            ->orWhere('author', 'LIKE', "%{$query}%")
+            ->limit(20)
+            ->get();
+
+        return SearchResult::online($books, $query, count($cached['formatted']));
+    }
+
+    /**
+     * Save search results to database
+     */
+    public function saveSearchResults(Collection $apiResults): void
+    {
+        $batch = SyncBatch::create([
+            'type' => 'manual_search',
+            'status' => 'running',
+            'books_count' => 0,
+            'metadata' => [],
+        ]);
+
+        $savedCount = 0;
+
+        foreach ($apiResults as $result) {
+            try {
+                $bookData = $this->importService->formatOpenLibraryData($result);
+                $book = $this->importService->upsertFromOpenLibrary($bookData);
+
+                if ($result['cover_i'] ?? null) {
+                    $this->downloadCoverLocally($result['cover_i'], $result['cover_url'] ?? null);
+                }
+
+                $book->markAsDiscoveredOnline();
+                $book->update(['sync_batch_id' => $batch->id]);
+
+                $savedCount++;
+            } catch (\Exception $e) {
+                \Log::error('Failed to save book from search', [
+                    'result' => $result,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $batch->update([
+            'status' => 'completed',
+            'books_count' => $savedCount,
+        ]);
+    }
+
+    /**
+     * Download and store cover locally
+     */
+    public function downloadCoverLocally(string $coverId, ?string $fallbackUrl = null): ?string
+    {
+        try {
+            $url = "{$this->OPENLIBRARY_COVERS_API}/{$coverId}-M.jpg";
+            $response = Http::timeout(10)->get($url);
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $filename = "{$coverId}.jpg";
+            Storage::disk('local')->put("covers/{$filename}", $response->body());
+
+            return "covers/{$filename}";
+        } catch (\Exception $e) {
+            \Log::error('Failed to download cover', [
+                'cover_id' => $coverId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Get cover path (local or fallback to URL)
+     */
+    public function getCoverPath(Book $book): ?string
+    {
+        if ($book->cover_stored_locally && $book->external_id) {
+            $localPath = storage_path("app/covers/{$book->external_id}.jpg");
+
+            if (file_exists($localPath)) {
+                return "/covers/{$book->external_id}";
+            }
+        }
+
+        return $book->cover_url;
+    }
+
+    /**
+     * Search for books from Open Library API (legacy method)
      *
      * @param  string  $query  Search query (title, author, ISBN)
      * @param  string|null  $author  Optional author filter
      * @return array Array of book data
      */
-    public function search(string $query, ?string $author = null): array
+    public function searchLegacy(string $query, ?string $author = null): array
     {
         $cacheKey = $this->getCacheKey('search', $query, $author);
 
@@ -152,6 +332,7 @@ class BookSearchService
                 'published_year' => $doc['first_publish_year'] ?? null,
                 'description' => $doc['description'] ?? '',
                 'publisher' => $doc['publisher'][0] ?? null,
+                'cover_i' => $doc['cover_i'] ?? null,
             ];
 
             // Add cover URL if available

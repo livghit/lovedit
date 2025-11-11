@@ -2,6 +2,7 @@ import BookCard from '@/components/BookCard';
 import { ErrorState, NoResultsState } from '@/components/EmptyState';
 import SearchInput from '@/components/SearchInput';
 import { LoadingGrid } from '@/components/Skeletons';
+import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
@@ -13,6 +14,16 @@ interface Book {
     author: string;
     cover_url?: string | null;
     isbn?: string;
+}
+
+interface SearchApiResponse {
+    is_local: boolean;
+    books: Book[];
+    has_online_option: boolean;
+    query: string;
+    total_count: number;
+    source: 'local' | 'online';
+    message: string;
 }
 
 interface Paginator<T> {
@@ -43,6 +54,12 @@ export default function BooksSearch({
     // Ensure local state is always a string
     const [searchQuery, setSearchQuery] = useState<string>(query ?? '');
     const [isLoading, setIsLoading] = useState(false);
+    const [searchResults, setSearchResults] = useState<Book[]>(results);
+    const [searchMode, setSearchMode] = useState<'local' | 'online' | null>(
+        null,
+    );
+    const [hasOnlineOption, setHasOnlineOption] = useState(false);
+    const [searchMessage, setSearchMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     // Keep local state in sync when server-provided query changes between visits
@@ -50,31 +67,44 @@ export default function BooksSearch({
         setSearchQuery(query ?? '');
     }, [query]);
 
-    const handleSearch = async () => {
+    const performSearch = async (online: boolean = false) => {
         const trimmed = searchQuery.trim();
-        if (!trimmed) return; // still prevent empty queries
+        if (!trimmed) return;
 
         setIsLoading(true);
         setError(null);
+        setSearchResults([]);
 
         try {
-            router.get(
-                '/books/search',
-                { query: trimmed },
-                {
-                    onError: () => {
-                        setError('Failed to search books. Please try again.');
-                        setIsLoading(false);
-                    },
-                    onFinish: () => {
-                        setIsLoading(false);
-                    },
-                },
+            const response = await fetch(
+                `/api/books/search?q=${encodeURIComponent(trimmed)}&online=${online ? 'true' : 'false'}`,
             );
-        } catch {
-            setError('Something went wrong. Please try again.');
+
+            if (!response.ok) {
+                throw new Error('Search failed');
+            }
+
+            const data: SearchApiResponse = await response.json();
+
+            setSearchResults(data.books);
+            setSearchMode(data.is_local ? 'local' : 'online');
+            setHasOnlineOption(data.has_online_option);
+            setSearchMessage(data.message);
+        } catch (err) {
+            setError('Failed to search books. Please try again.');
+            console.error('Search error:', err);
+        } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleSearch = async () => {
+        // Start with local search (online defaults to false)
+        await performSearch(false);
+    };
+
+    const handleFindOnline = async () => {
+        await performSearch(true);
     };
 
     const handleBookClick = (book: Book) => {
@@ -88,7 +118,7 @@ export default function BooksSearch({
             <div className="flex flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <div className="space-y-2">
                     <h1 className="text-3xl font-bold">Search Books</h1>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                         Find and add books to your collection
                     </p>
                 </div>
@@ -111,14 +141,48 @@ export default function BooksSearch({
 
                 {isLoading ? (
                     <LoadingGrid count={6} />
-                ) : results.length > 0 ? (
+                ) : searchResults.length > 0 ? (
                     <>
-                        <div className="text-sm text-muted-foreground">
-                            Found {results.length} book
-                            {results.length !== 1 ? 's' : ''}
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground text-sm">
+                                    Found {searchResults.length} book
+                                    {searchResults.length !== 1 ? 's' : ''}
+                                </span>
+                                {searchMode && (
+                                    <span
+                                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                            searchMode === 'local'
+                                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                                : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                        }`}
+                                    >
+                                        {searchMode === 'local'
+                                            ? 'Local'
+                                            : 'Online'}
+                                    </span>
+                                )}
+                            </div>
+                            {hasOnlineOption && (
+                                <Button
+                                    onClick={handleFindOnline}
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isLoading}
+                                >
+                                    Find Online
+                                </Button>
+                            )}
                         </div>
+
+                        {searchMessage && (
+                            <p className="text-muted-foreground text-xs italic">
+                                {searchMessage}
+                            </p>
+                        )}
+
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {results.map((book) => (
+                            {searchResults.map((book) => (
                                 <BookCard
                                     key={book.id}
                                     book={book}
@@ -128,10 +192,22 @@ export default function BooksSearch({
                         </div>
                     </>
                 ) : searchQuery ? (
-                    <NoResultsState />
+                    <div className="flex flex-col items-center gap-4">
+                        <NoResultsState />
+                        {hasOnlineOption && searchMode !== 'online' && (
+                            <Button
+                                onClick={handleFindOnline}
+                                variant="default"
+                                size="lg"
+                                disabled={isLoading}
+                            >
+                                Search Online
+                            </Button>
+                        )}
+                    </div>
                 ) : books && books.data.length > 0 ? (
                     <>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-muted-foreground text-sm">
                             Showing latest books
                         </div>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -169,7 +245,7 @@ export default function BooksSearch({
                     </>
                 ) : (
                     <div className="py-12 text-center">
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-muted-foreground text-sm">
                             Enter a book title or author name to search
                         </p>
                     </div>

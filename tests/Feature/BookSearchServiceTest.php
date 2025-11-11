@@ -27,13 +27,18 @@ describe('BookSearchService', function () {
                 ]),
             ]);
 
-            // First call hits the API
-            $result1 = $this->service->search('lord of the rings');
-            expect($result1)->toHaveCount(1);
+            // First call hits the API (search local first, then online with forceOnline)
+            $result1 = $this->service->search('lord of the rings', forceOnline: true);
+            expect($result1->books)->toHaveCount(1);
+            $title1 = $result1->books->first()->title;
 
             // Second call should be cached
-            $result2 = $this->service->search('lord of the rings');
-            expect($result2)->toEqual($result1);
+            $result2 = $this->service->search('lord of the rings', forceOnline: true);
+            expect($result2->books)->toHaveCount(1);
+            $title2 = $result2->books->first()->title;
+
+            // Titles should match
+            expect($title2)->toBe($title1);
 
             // Verify only one HTTP call was made
             Http::assertSentCount(1);
@@ -44,8 +49,8 @@ describe('BookSearchService', function () {
                 'openlibrary.org/search.json*' => Http::response([], 500),
             ]);
 
-            $result = $this->service->search('test query');
-            expect($result)->toBe([]);
+            $result = $this->service->search('test query', forceOnline: true);
+            expect($result->books)->toBeEmpty();
         });
 
         it('includes cover URLs when available', function () {
@@ -53,7 +58,7 @@ describe('BookSearchService', function () {
                 'openlibrary.org/search.json*' => Http::response([
                     'docs' => [
                         [
-                            'title' => 'Book Title',
+                            'title' => 'Test Book Title',
                             'author_name' => ['Author Name'],
                             'key' => '/works/OL123W',
                             'cover_i' => 123456,
@@ -62,8 +67,12 @@ describe('BookSearchService', function () {
                 ]),
             ]);
 
-            $result = $this->service->search('test');
-            expect($result[0]['cover_url'])->toContain('covers.openlibrary.org/b/id/123456-M.jpg');
+            $result = $this->service->search('test', forceOnline: true);
+            expect($result->books)->toHaveCount(1);
+
+            $book = $result->books->first();
+            expect($book)->not->toBeNull();
+            expect($book->cover_url)->toContain('covers.openlibrary.org/b/id/123456-M.jpg');
         });
 
         it('formats search results correctly', function () {
@@ -82,8 +91,8 @@ describe('BookSearchService', function () {
                 ]),
             ]);
 
-            $result = $this->service->search('test');
-            expect($result[0])
+            $result = $this->service->search('test', forceOnline: true);
+            expect($result->books[0])
                 ->toHaveKeys(['title', 'author', 'external_id', 'isbn', 'published_year', 'publisher']);
         });
     });
@@ -181,12 +190,12 @@ describe('BookSearchService', function () {
 
             // Make calls up to the rate limit
             for ($i = 0; $i < 30; $i++) {
-                $this->service->search("query {$i}");
+                $this->service->search("query {$i}", forceOnline: true);
             }
 
             // Next call should be rate limited
-            $result = $this->service->search('query 31');
-            expect($result)->toBe([]);
+            $result = $this->service->search('query 31', forceOnline: true);
+            expect($result->books)->toBeEmpty();
         });
     });
 
@@ -196,10 +205,10 @@ describe('BookSearchService', function () {
                 'openlibrary.org/search.json*' => Http::response(['docs' => []]),
             ]);
 
-            $result1 = $this->service->search('test', 'author');
-            $result2 = $this->service->search('test', 'author');
+            $result1 = $this->service->searchLocal('test');
+            $result2 = $this->service->searchLocal('test');
 
-            expect($result1)->toEqual($result2);
+            expect($result1->query)->toEqual($result2->query);
         });
 
         it('generates different keys for different queries', function () {
@@ -210,9 +219,11 @@ describe('BookSearchService', function () {
             $result1 = $this->service->search('query1');
             $result2 = $this->service->search('query2');
 
-            // Both should be empty arrays, but they came from different cache keys
-            expect($result1)->toEqual($result2);
-            expect($result1)->toBe([]);
+            // Both should be empty results, but with different queries
+            expect($result1->books)->toBeEmpty();
+            expect($result2->books)->toBeEmpty();
+            expect($result1->query)->toBe('query1');
+            expect($result2->query)->toBe('query2');
         });
     });
 });

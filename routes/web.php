@@ -10,8 +10,12 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
+// Cover serving route (public, no auth required)
+Route::get('/covers/{externalId}', [\App\Http\Controllers\CoverController::class, 'show'])
+    ->name('covers.show');
+
 Route::middleware(['auth', 'verified'])->group(function () {
-        Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     // Books routes
     Route::get('books/search', [\App\Http\Controllers\BookController::class, 'search'])->name('books.search');
