@@ -37,6 +37,9 @@ class DashboardController extends Controller
             ->limit(5)
             ->get(['id', 'book_id', 'rating', 'content', 'created_at']);
 
+        // Recent review books (for cover fan)
+        $recentReviewBooks = $recentReviews->pluck('book')->filter()->take(5)->values();
+
         // Recent to-review list additions (5 most recent)
         $recentToReview = $user->toReviewLists()
             ->with(['book:id,title,author,cover_url'])
@@ -86,6 +89,7 @@ class DashboardController extends Controller
             'recentActivity' => [
                 'reviews' => $recentReviews,
                 'toReview' => $recentToReview,
+                'reviewBooks' => $recentReviewBooks,
             ],
             'insights' => [
                 'highestRatedBook' => $highestRatedBook,
