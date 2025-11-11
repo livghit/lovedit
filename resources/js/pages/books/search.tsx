@@ -78,6 +78,12 @@ export default function BooksSearch({
         try {
             const response = await fetch(
                 `/api/books/search?q=${encodeURIComponent(trimmed)}&online=${online ? 'true' : 'false'}`,
+                {
+                    headers: {
+                        Accept: 'application/json',
+                    },
+                    credentials: 'same-origin',
+                },
             );
 
             if (!response.ok) {
@@ -118,7 +124,7 @@ export default function BooksSearch({
             <div className="flex flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <div className="space-y-2">
                     <h1 className="text-3xl font-bold">Search Books</h1>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-sm text-muted-foreground">
                         Find and add books to your collection
                     </p>
                 </div>
@@ -145,7 +151,7 @@ export default function BooksSearch({
                     <>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground text-sm">
+                                <span className="text-sm text-muted-foreground">
                                     Found {searchResults.length} book
                                     {searchResults.length !== 1 ? 's' : ''}
                                 </span>
@@ -176,7 +182,7 @@ export default function BooksSearch({
                         </div>
 
                         {searchMessage && (
-                            <p className="text-muted-foreground text-xs italic">
+                            <p className="text-xs text-muted-foreground italic">
                                 {searchMessage}
                             </p>
                         )}
@@ -207,7 +213,7 @@ export default function BooksSearch({
                     </div>
                 ) : books && books.data.length > 0 ? (
                     <>
-                        <div className="text-muted-foreground text-sm">
+                        <div className="text-sm text-muted-foreground">
                             Showing latest books
                         </div>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -245,7 +251,7 @@ export default function BooksSearch({
                     </>
                 ) : (
                     <div className="py-12 text-center">
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                             Enter a book title or author name to search
                         </p>
                     </div>
