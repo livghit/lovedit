@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'openlibrary' => [
+        'enabled' => env('OPENLIBRARY_ENABLED', true),
+        'api_url' => env('OPENLIBRARY_API_URL', 'https://openlibrary.org/search.json'),
+        'covers_url' => env('OPENLIBRARY_COVERS_URL', 'https://covers.openlibrary.org/b/id'),
+        'rate_limit' => env('OPENLIBRARY_RATE_LIMIT', 30), // requests per minute
+    ],
+
 ];

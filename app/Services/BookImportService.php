@@ -94,8 +94,9 @@ class BookImportService
      */
     public function deduplicateTitle(string $title): string
     {
-        // Remove common Wikipedia suffixes
-        $title = preg_replace('/\s*[-–—]\s*Wikipedia\s*$/i', '', $title);
+        // Remove common Wikipedia suffixes with various dash types
+        // Matches: — (em dash), – (en dash), - (hyphen)
+        $title = preg_replace('/\s*(?:—|–|-)\s*Wikipedia\s*$/i', '', $title);
 
         // Remove extra whitespace
         $title = trim(preg_replace('/\s+/', ' ', $title));

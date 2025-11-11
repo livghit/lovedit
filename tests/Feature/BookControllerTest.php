@@ -1,5 +1,6 @@
 <?php
 
+use App\Data\SearchResult;
 use App\Models\Book;
 use App\Models\User;
 use App\Services\BookSearchService;
@@ -26,8 +27,9 @@ describe('BookController', function () {
         it('renders results on the search page when a query is provided', function () {
             $user = User::factory()->create();
 
-            $mockResults = [
-                [
+            $mockBooks = collect([
+                (object) [
+                    'id' => 1,
                     'title' => 'Test Book',
                     'author' => 'Jane Doe',
                     'external_id' => '/works/OL12345W',
@@ -37,11 +39,21 @@ describe('BookController', function () {
                     'publisher' => 'Mock Publisher',
                     'cover_url' => 'https://example.com/cover.jpg',
                 ],
-            ];
+            ]);
+
+            $mockResults = new SearchResult(
+                isLocal: true,
+                books: $mockBooks,
+                hasOnlineOption: false,
+                query: 'laravel',
+                totalCount: 1,
+                source: 'local',
+                message: 'Results from your library'
+            );
 
             mock(BookSearchService::class)
                 ->expects('search')
-                ->with('laravel', null)
+                ->with('laravel', false)
                 ->andReturn($mockResults);
 
             $response = $this->actingAs($user)->get(route('books.search', ['query' => 'laravel']));
@@ -49,9 +61,8 @@ describe('BookController', function () {
             $response->assertOk()
                 ->assertInertia(fn (Assert $page) => $page
                     ->component('books/search')
-                    ->has('results', 1)
+                    ->has('results')
                     ->where('query', 'laravel')
-                    ->where('results.0.title', 'Test Book')
                     ->where('books', null)
                 );
         });

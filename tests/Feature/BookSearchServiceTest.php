@@ -4,10 +4,16 @@ use App\Models\Book;
 use App\Services\BookSearchService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->service = app(BookSearchService::class);
     Cache::clear();
+
+    // Clean up storage for tests
+    if (Storage::disk('local')->exists('covers')) {
+        Storage::disk('local')->deleteDirectory('covers');
+    }
 });
 
 describe('BookSearchService', function () {
@@ -25,6 +31,7 @@ describe('BookSearchService', function () {
                         ],
                     ],
                 ]),
+                'covers.openlibrary.org/*' => Http::response(file_get_contents(__DIR__.'/../../public/favicon.ico'), 200, ['Content-Type' => 'image/jpeg']),
             ]);
 
             // First call hits the API (search local first, then online with forceOnline)
@@ -32,7 +39,7 @@ describe('BookSearchService', function () {
             expect($result1->books)->toHaveCount(1);
             $title1 = $result1->books->first()->title;
 
-            // Second call should be cached
+            // Second call should be cached (no new HTTP calls)
             $result2 = $this->service->search('lord of the rings', forceOnline: true);
             expect($result2->books)->toHaveCount(1);
             $title2 = $result2->books->first()->title;
@@ -40,8 +47,8 @@ describe('BookSearchService', function () {
             // Titles should match
             expect($title2)->toBe($title1);
 
-            // Verify only one HTTP call was made
-            Http::assertSentCount(1);
+            // Verify only 2 HTTP calls were made: 1 search + 1 cover download (no calls on second search due to cache)
+            Http::assertSentCount(2);
         });
 
         it('handles API failures gracefully', function () {

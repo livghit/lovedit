@@ -24,6 +24,7 @@ class BookFactory extends Factory
             'cover_url' => $this->faker->imageUrl(300, 450),
             'published_year' => $this->faker->year(),
             'publisher' => $this->faker->company(),
+            'search_count' => 0,
         ];
     }
 }

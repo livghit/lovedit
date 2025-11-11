@@ -14,17 +14,11 @@ use Illuminate\Support\Facades\Storage;
 
 class BookSearchService
 {
-    protected const OPENLIBRARY_API = 'https://openlibrary.org/search.json';
-
-    protected const OPENLIBRARY_COVERS_API = 'https://covers.openlibrary.org/b/id';
-
     protected const CACHE_DURATION_SEARCH = 60 * 60 * 72; // 72 hours for search results
 
     protected const CACHE_DURATION_DETAILS = 60 * 60 * 24 * 30; // 30 days for book details
 
     protected const CACHE_DURATION_COVERS = 60 * 60 * 24 * 60; // 60 days for covers
-
-    protected const RATE_LIMIT_PER_MINUTE = 30;
 
     public function __construct(private BookImportService $importService) {}
 
@@ -68,6 +62,7 @@ class BookSearchService
     public function searchOnline(string $query): SearchResult
     {
         $cacheKey = $this->getCacheKey('search', $query);
+        $isFromCache = Cache::has($cacheKey);
 
         // Store both formatted and raw results
         $cached = Cache::remember($cacheKey, self::CACHE_DURATION_SEARCH, function () use ($query) {
@@ -79,7 +74,7 @@ class BookSearchService
             }
 
             try {
-                $response = Http::timeout(10)->get(self::OPENLIBRARY_API, [
+                $response = Http::timeout(10)->get(config('services.openlibrary.api_url'), [
                     'q' => $query,
                     'limit' => 20,
                 ]);
@@ -102,8 +97,8 @@ class BookSearchService
             }
         });
 
-        // Save results to database
-        if (! empty($cached['raw'])) {
+        // Save results to database only on fresh API calls (not from cache)
+        if (! $isFromCache && ! empty($cached['raw'])) {
             $this->saveSearchResults(collect($cached['raw']));
         }
 
@@ -163,14 +158,20 @@ class BookSearchService
     public function downloadCoverLocally(string $coverId, ?string $fallbackUrl = null): ?string
     {
         try {
-            $url = "{$this->OPENLIBRARY_COVERS_API}/{$coverId}-M.jpg";
+            $filename = "{$coverId}.jpg";
+
+            // Skip if file already exists
+            if (Storage::disk('local')->exists("covers/{$filename}")) {
+                return "covers/{$filename}";
+            }
+
+            $url = config('services.openlibrary.covers_url')."/{$coverId}-M.jpg";
             $response = Http::timeout(10)->get($url);
 
             if (! $response->successful()) {
                 return null;
             }
 
-            $filename = "{$coverId}.jpg";
             Storage::disk('local')->put("covers/{$filename}", $response->body());
 
             return "covers/{$filename}";
@@ -229,7 +230,7 @@ class BookSearchService
                     $params['author'] = $author;
                 }
 
-                $response = Http::timeout(10)->get(self::OPENLIBRARY_API, $params);
+                $response = Http::timeout(10)->get(config('services.openlibrary.api_url'), $params);
 
                 if ($response->failed()) {
                     return [];
@@ -414,7 +415,7 @@ class BookSearchService
     protected function checkRateLimit(): bool
     {
         $key = 'ol_api_rate_limit';
-        $limit = RateLimiter::attempt($key, self::RATE_LIMIT_PER_MINUTE, function () {
+        $limit = RateLimiter::attempt($key, config('services.openlibrary.rate_limit'), function () {
             return true;
         }, 60);
 

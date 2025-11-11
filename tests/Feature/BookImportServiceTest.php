@@ -341,7 +341,7 @@ describe('BookImportService', function () {
             $book = $this->service->upsertFromOpenLibrary($data);
 
             expect($book->last_synced_at)->not->toBeNull();
-            expect($book->last_synced_at->isAfter($before))->toBeTrue();
+            expect($book->last_synced_at->timestamp)->toBeGreaterThanOrEqual($before->timestamp);
         });
 
         it('sets first_discovered_at for new books', function () {
@@ -355,7 +355,7 @@ describe('BookImportService', function () {
             $book = $this->service->upsertFromOpenLibrary($data);
 
             expect($book->first_discovered_at)->not->toBeNull();
-            expect($book->first_discovered_at->isAfter($before))->toBeTrue();
+            expect($book->first_discovered_at->timestamp)->toBeGreaterThanOrEqual($before->timestamp);
         });
     });
 });

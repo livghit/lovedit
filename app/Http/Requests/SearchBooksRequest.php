@@ -13,8 +13,12 @@ class SearchBooksRequest extends FormRequest
 
     public function rules(): array
     {
+        // API endpoint (/api/books/search) requires q parameter
+        // Web endpoint (/books/search) makes q optional
+        $isApiRequest = $this->routeIs('api.books.search');
+
         return [
-            'q' => ['required', 'string', 'min:2', 'max:255'],
+            'q' => $isApiRequest ? ['required', 'string', 'min:2', 'max:255'] : ['nullable', 'string', 'min:2', 'max:255'],
             'query' => ['nullable', 'string', 'min:2', 'max:255'],
             'author' => ['nullable', 'string', 'max:255'],
             'online' => ['nullable', 'boolean'],

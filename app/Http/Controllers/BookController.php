@@ -19,9 +19,10 @@ class BookController extends Controller
         $validated = $request->validated();
         $query = $validated['query'] ?? null;
         $author = $validated['author'] ?? null;
+        $forceOnline = (bool) ($validated['online'] ?? false);
 
         if ($query) {
-            $results = $this->searchService->search($query, $author);
+            $results = $this->searchService->search($query, $forceOnline);
 
             return Inertia::render('books/search', [
                 'results' => $results,

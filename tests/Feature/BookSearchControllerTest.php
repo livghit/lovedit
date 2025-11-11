@@ -4,12 +4,16 @@ use App\Models\Book;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 
+// Helper function to build query string
+function buildQueryString(array $params): string
+{
+    return '?'.http_build_query($params);
+}
+
 describe('BookSearchController', function () {
-    describe('POST /api/books/search', function () {
+    describe('GET /api/books/search', function () {
         it('requires authentication', function () {
-            $response = $this->postJson('/api/books/search', [
-                'q' => 'test',
-            ]);
+            $response = $this->getJson('/api/books/search'.buildQueryString(['q' => 'test']));
 
             $response->assertUnauthorized();
         });
@@ -17,7 +21,7 @@ describe('BookSearchController', function () {
         it('requires query parameter', function () {
             $user = User::factory()->create();
 
-            $response = $this->actingAs($user)->postJson('/api/books/search', []);
+            $response = $this->actingAs($user)->getJson('/api/books/search');
 
             $response->assertUnprocessable();
             $response->assertJsonValidationErrors('q');
@@ -30,9 +34,7 @@ describe('BookSearchController', function () {
                 'author' => 'J. R. R. Tolkien',
             ]);
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'Lord of the Rings',
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'Lord of the Rings']));
 
             $response->assertSuccessful();
             $response->assertJsonPath('is_local', true);
@@ -47,9 +49,7 @@ describe('BookSearchController', function () {
             Book::factory()->create(['title' => 'Harry Potter and the Chamber of Secrets']);
             Book::factory()->create(['title' => 'The Lord of the Rings']);
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'Harry Potter',
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'Harry Potter']));
 
             $response->assertSuccessful();
             expect($response->json('books'))->toHaveCount(2);
@@ -61,9 +61,7 @@ describe('BookSearchController', function () {
             Book::factory()->create(['title' => 'Book 2', 'author' => 'Stephen King']);
             Book::factory()->create(['title' => 'Book 3', 'author' => 'J. K. Rowling']);
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'Stephen King',
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'Stephen King']));
 
             $response->assertSuccessful();
             expect($response->json('books'))->toHaveCount(2);
@@ -75,9 +73,7 @@ describe('BookSearchController', function () {
                 'title' => 'Matching Book',
             ]);
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'Matching',
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'Matching']));
 
             $response->assertSuccessful();
             expect($response->json('books'))->toHaveCount(20);
@@ -86,9 +82,7 @@ describe('BookSearchController', function () {
         it('shows online option when no local results', function () {
             $user = User::factory()->create();
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'Nonexistent Book',
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'Nonexistent Book']));
 
             $response->assertSuccessful();
             $response->assertJsonPath('has_online_option', true);
@@ -98,9 +92,7 @@ describe('BookSearchController', function () {
         it('returns appropriate message for empty local results', function () {
             $user = User::factory()->create();
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'Nonexistent',
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'Nonexistent']));
 
             $response->assertSuccessful();
             expect($response->json('message'))->toContain('No local results found');
@@ -110,9 +102,7 @@ describe('BookSearchController', function () {
             $user = User::factory()->create();
             Book::factory()->create(['title' => 'Found Book']);
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'Found',
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'Found']));
 
             $response->assertSuccessful();
             expect($response->json('message'))->toContain('Results from your library');
@@ -124,9 +114,7 @@ describe('BookSearchController', function () {
 
             expect($book->search_count)->toBe(0);
 
-            $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'Test',
-            ]);
+            $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'Test']));
 
             expect($book->fresh()->search_count)->toBe(1);
         });
@@ -147,10 +135,7 @@ describe('BookSearchController', function () {
                 ]),
             ]);
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'hobbit',
-                'online' => true,
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'hobbit', 'online' => 1]));
 
             $response->assertSuccessful();
             $response->assertJsonPath('source', 'online');
@@ -174,10 +159,7 @@ describe('BookSearchController', function () {
                 ]),
             ]);
 
-            $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'hobbit',
-                'online' => true,
-            ]);
+            $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'hobbit', 'online' => 1]));
 
             $this->assertDatabaseHas('books', [
                 'title' => 'The Hobbit',
@@ -189,9 +171,7 @@ describe('BookSearchController', function () {
             $user = User::factory()->create();
             Book::factory()->create(['title' => 'Test Book']);
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'Test',
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'Test']));
 
             $response->assertSuccessful();
             $response->assertJsonStructure([
@@ -223,9 +203,7 @@ describe('BookSearchController', function () {
                 'author' => 'J. R. R. Tolkien',
             ]);
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'lord of the rings',
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'lord of the rings']));
 
             $response->assertSuccessful();
             expect($response->json('books'))->toHaveCount(1);
@@ -236,9 +214,7 @@ describe('BookSearchController', function () {
             Book::factory()->create(['title' => 'The Hobbit']);
             Book::factory()->create(['title' => 'Hobbits of Middle Earth']);
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'hobbit',
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'hobbit']));
 
             $response->assertSuccessful();
             expect($response->json('books'))->toHaveCount(2);
@@ -248,9 +224,7 @@ describe('BookSearchController', function () {
             $user = User::factory()->create();
             Book::factory()->create(['title' => 'Test & Company']);
 
-            $response = $this->actingAs($user)->getJson('/api/books/search', [
-                'q' => 'Test & Company',
-            ]);
+            $response = $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'Test & Company']));
 
             $response->assertSuccessful();
             expect($response->json('books'))->toHaveCount(1);
