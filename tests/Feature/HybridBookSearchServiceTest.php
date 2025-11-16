@@ -152,6 +152,7 @@ describe('BookSearchService - Hybrid Search', function () {
                             'title' => 'The Hobbit',
                             'author_name' => ['Tolkien'],
                             'key' => '/works/OL1W',
+                            'cover_i' => 123456,
                         ],
                     ],
                 ]),
@@ -176,6 +177,7 @@ describe('BookSearchService - Hybrid Search', function () {
                             'title' => 'Test Book',
                             'author_name' => ['Author'],
                             'key' => '/works/OL1W',
+                            'cover_i' => 123,
                         ],
                     ],
                 ]),
@@ -185,15 +187,15 @@ describe('BookSearchService - Hybrid Search', function () {
             $result2 = $this->service->searchOnline('test');
 
             expect($result1->books->first()->title)->toBe($result2->books->first()->title);
-            Http::assertSentCount(1); // Only one API call
+            Http::assertSentCount(1); // Only one search API call (work details are fetched in background job)
         });
 
-        it('saves results to database', function () {
+        it('does not save results to database automatically', function () {
             Http::fake([
                 'openlibrary.org/search.json*' => Http::response([
                     'docs' => [
                         [
-                            'title' => 'Saved Book',
+                            'title' => 'Unsaved Book',
                             'author_name' => ['Save Author'],
                             'key' => '/works/OL999W',
                             'first_publish_year' => 2020,
@@ -205,9 +207,9 @@ describe('BookSearchService - Hybrid Search', function () {
 
             $this->service->searchOnline('saved');
 
-            $this->assertDatabaseHas('books', [
-                'title' => 'Saved Book',
-                'author' => 'Save Author',
+            // Books should NOT be automatically saved during search
+            $this->assertDatabaseMissing('books', [
+                'title' => 'Unsaved Book',
             ]);
         });
 
@@ -231,45 +233,29 @@ describe('BookSearchService - Hybrid Search', function () {
             expect($result->message)->toContain('Results from Open Library');
         });
 
-        it('marks saved books as discovered online', function () {
+        it('returns search results without saving to database', function () {
             Http::fake([
                 'openlibrary.org/search.json*' => Http::response([
                     'docs' => [
                         [
-                            'title' => 'Discovered Book',
+                            'title' => 'Unsaved Book',
                             'author_name' => ['Author'],
                             'key' => '/works/OL1W',
+                            'cover_i' => 123,
                         ],
                     ],
                 ]),
             ]);
 
-            $this->service->searchOnline('discovered');
+            $result = $this->service->searchOnline('test');
 
-            $book = Book::where('title', 'Discovered Book')->first();
-            expect($book->discovered_via_search)->toBeTrue();
-            expect($book->first_discovered_at)->not->toBeNull();
-        });
+            // Results should be returned
+            expect($result->books)->toHaveCount(1);
+            expect($result->books->first()->title)->toBe('Unsaved Book');
 
-        it('creates sync batch for online results', function () {
-            Http::fake([
-                'openlibrary.org/search.json*' => Http::response([
-                    'docs' => [
-                        [
-                            'title' => 'Book 1',
-                            'author_name' => ['Author'],
-                            'key' => '/works/OL1W',
-                        ],
-                    ],
-                ]),
-            ]);
-
-            $this->service->searchOnline('test');
-
-            $this->assertDatabaseHas('sync_batches', [
-                'type' => 'manual_search',
-                'status' => 'completed',
-                'books_count' => 1,
+            // But book should NOT be saved to database
+            $this->assertDatabaseMissing('books', [
+                'title' => 'Unsaved Book',
             ]);
         });
     });
@@ -359,6 +345,37 @@ describe('BookSearchService - Hybrid Search', function () {
                 'title' => 'Valid Book',
             ]);
         });
+
+        it('skips books without covers', function () {
+            $results = collect([
+                [
+                    'title' => 'Book With Cover',
+                    'author_name' => ['Author 1'],
+                    'key' => '/works/OL1W',
+                    'cover_i' => 123,
+                    'cover_url' => 'url',
+                ],
+                [
+                    'title' => 'Book Without Cover',
+                    'author_name' => ['Author 2'],
+                    'key' => '/works/OL2W',
+                    // No cover_i field
+                ],
+            ]);
+
+            $this->service->saveSearchResults($results);
+
+            // Only book with cover should be saved
+            $this->assertDatabaseHas('books', [
+                'title' => 'Book With Cover',
+            ]);
+
+            $this->assertDatabaseMissing('books', [
+                'title' => 'Book Without Cover',
+            ]);
+
+            $this->assertDatabaseCount('books', 1);
+        });
     });
 
     describe('rate limiting', function () {
@@ -390,6 +407,7 @@ describe('BookSearchService - Hybrid Search', function () {
                             'title' => 'Cached Book',
                             'author_name' => ['Author'],
                             'key' => '/works/OL1W',
+                            'cover_i' => 123,
                         ],
                     ],
                 ]),
@@ -402,7 +420,7 @@ describe('BookSearchService - Hybrid Search', function () {
             $result2 = $this->service->searchOnline('cached');
 
             expect($result1->books->first()->title)->toBe($result2->books->first()->title);
-            Http::assertSentCount(1);
+            Http::assertSentCount(1); // Only one search call (work details are fetched in background job)
         });
     });
 });

@@ -211,4 +211,87 @@ describe('BookController', function () {
             $response->assertUnprocessable();
         });
     });
+
+    describe('storeManual', function () {
+        it('creates a manual book with only title', function () {
+            $user = User::factory()->create();
+            $bookData = [
+                'title' => 'Manually Added Book',
+            ];
+
+            $response = $this->actingAs($user)->post(route('books.store-manual'), $bookData);
+
+            $response->assertRedirect();
+
+            $this->assertDatabaseHas('books', [
+                'title' => 'Manually Added Book',
+                'is_user_created' => true,
+            ]);
+        });
+
+        it('creates a manual book with all optional fields', function () {
+            $user = User::factory()->create();
+            $bookData = [
+                'title' => 'Complete Manual Book',
+                'author' => 'John Doe',
+                'isbn' => '978-3-16-148410-0',
+                'cover_url' => 'https://example.com/cover.jpg',
+                'publisher' => 'Test Publisher',
+                'publish_date' => 2023,
+                'description' => 'A detailed description',
+            ];
+
+            $response = $this->actingAs($user)->post(route('books.store-manual'), $bookData);
+
+            $response->assertRedirect();
+
+            $this->assertDatabaseHas('books', [
+                'title' => 'Complete Manual Book',
+                'author' => 'John Doe',
+                'isbn' => '978-3-16-148410-0',
+                'publisher' => 'Test Publisher',
+                'is_user_created' => true,
+            ]);
+        });
+
+        it('requires authentication for manual book creation', function () {
+            $bookData = ['title' => 'Test Book'];
+
+            $response = $this->post(route('books.store-manual'), $bookData);
+
+            $response->assertRedirect(route('login'));
+        });
+
+        it('validates title is required for manual book creation', function () {
+            $user = User::factory()->create();
+
+            $response = $this->actingAs($user)->post(route('books.store-manual'), []);
+
+            $response->assertSessionHasErrors('title');
+        });
+
+        it('validates cover_url must be a valid URL', function () {
+            $user = User::factory()->create();
+            $bookData = [
+                'title' => 'Test Book',
+                'cover_url' => 'not-a-valid-url',
+            ];
+
+            $response = $this->actingAs($user)->post(route('books.store-manual'), $bookData);
+
+            $response->assertSessionHasErrors('cover_url');
+        });
+
+        it('validates publish_date must be a valid year', function () {
+            $user = User::factory()->create();
+            $bookData = [
+                'title' => 'Test Book',
+                'publish_date' => 999, // Too early
+            ];
+
+            $response = $this->actingAs($user)->post(route('books.store-manual'), $bookData);
+
+            $response->assertSessionHasErrors('publish_date');
+        });
+    });
 });

@@ -31,10 +31,9 @@ describe('BookSearchService', function () {
                         ],
                     ],
                 ]),
-                'covers.openlibrary.org/*' => Http::response(file_get_contents(__DIR__.'/../../public/favicon.ico'), 200, ['Content-Type' => 'image/jpeg']),
             ]);
 
-            // First call hits the API (search local first, then online with forceOnline)
+            // First call hits the API
             $result1 = $this->service->search('lord of the rings', forceOnline: true);
             expect($result1->books)->toHaveCount(1);
             $title1 = $result1->books->first()->title;
@@ -47,8 +46,8 @@ describe('BookSearchService', function () {
             // Titles should match
             expect($title2)->toBe($title1);
 
-            // Verify only 2 HTTP calls were made: 1 search + 1 cover download (no calls on second search due to cache)
-            Http::assertSentCount(2);
+            // Verify only 1 HTTP call was made (search only, no database operations)
+            Http::assertSentCount(1);
         });
 
         it('handles API failures gracefully', function () {
@@ -93,13 +92,14 @@ describe('BookSearchService', function () {
                             'isbn' => ['1234567890'],
                             'first_publish_year' => 2020,
                             'publisher' => ['Test Publisher'],
+                            'cover_i' => 123,
                         ],
                     ],
                 ]),
             ]);
 
             $result = $this->service->search('test', forceOnline: true);
-            expect($result->books[0])
+            expect($result->books->first())
                 ->toHaveKeys(['title', 'author', 'external_id', 'isbn', 'published_year', 'publisher']);
         });
     });

@@ -142,7 +142,7 @@ describe('BookSearchController', function () {
             expect($response->json('books'))->not->toBeEmpty();
         });
 
-        it('saves online results to database', function () {
+        it('does not save online results to database automatically', function () {
             $user = User::factory()->create();
 
             Http::fake([
@@ -161,9 +161,9 @@ describe('BookSearchController', function () {
 
             $this->actingAs($user)->getJson('/api/books/search'.buildQueryString(['q' => 'hobbit', 'online' => 1]));
 
-            $this->assertDatabaseHas('books', [
+            // Books should NOT be automatically saved during search
+            $this->assertDatabaseMissing('books', [
                 'title' => 'The Hobbit',
-                'author' => 'J. R. R. Tolkien',
             ]);
         });
 
