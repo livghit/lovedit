@@ -199,6 +199,7 @@ export default function BooksSearch({
             {
                 preserveScroll: true,
                 preserveState: true,
+                only: [],
                 onBefore: () => {
                     console.log('About to add book to review list');
                 },
