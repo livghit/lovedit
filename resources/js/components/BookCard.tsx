@@ -19,6 +19,7 @@ interface BookCardProps {
         label: string;
         variant?: 'default' | 'ghost' | 'outline';
     };
+    isLoading?: boolean;
 }
 
 export default function BookCard({
@@ -26,21 +27,33 @@ export default function BookCard({
     onClick,
     className,
     actionButton,
+    isLoading = false,
 }: BookCardProps) {
     return (
         <Card
             className={cn(
                 'overflow-hidden transition-all hover:shadow-lg dark:hover:shadow-lg/20',
-                onClick && 'cursor-pointer',
+                onClick && !isLoading && 'cursor-pointer',
+                isLoading && 'pointer-events-none opacity-60',
                 className,
             )}
         >
             <CardContent className="p-0">
                 <div className="flex h-full flex-col">
                     <div
-                        onClick={onClick}
+                        onClick={isLoading ? undefined : onClick}
                         className="relative aspect-[2/3] w-full overflow-hidden bg-muted"
                     >
+                        {isLoading && (
+                            <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                                <div className="flex flex-col items-center gap-2">
+                                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                                    <p className="text-xs font-medium">
+                                        Loading...
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                         <img
                             src={(function () {
                                 const placeholder =
@@ -62,7 +75,7 @@ export default function BookCard({
                                     'https://placehold.co/600x900?text=No%20Cover';
                             }}
                         />
-                        {actionButton && (
+                        {actionButton && !isLoading && (
                             <div className="absolute right-2 bottom-2 z-10">
                                 <Button
                                     type="button"
@@ -79,7 +92,7 @@ export default function BookCard({
                     </div>
 
                     <div
-                        onClick={onClick}
+                        onClick={isLoading ? undefined : onClick}
                         className="flex flex-1 flex-col gap-2 p-3"
                     >
                         <div>

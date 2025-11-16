@@ -100,4 +100,27 @@ class BookController extends Controller
 
         return redirect()->back()->with('success', 'Book created successfully!');
     }
+
+    public function storeAndView(StoreBookRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        // Check if book already exists by external_id
+        if (! empty($validated['external_id'])) {
+            $existingBook = Book::where('external_id', $validated['external_id'])->first();
+            if ($existingBook) {
+                return redirect()->route('books.show', $existingBook);
+            }
+        }
+
+        // Create the book with basic info
+        $book = Book::create($validated);
+
+        // Dispatch background job to fetch work details (description, subjects, etc.)
+        if ($book->ol_work_key) {
+            \App\Jobs\FetchBookWorkDetails::dispatch($book);
+        }
+
+        return redirect()->route('books.show', $book);
+    }
 }

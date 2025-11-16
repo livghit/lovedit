@@ -294,4 +294,70 @@ describe('BookController', function () {
             $response->assertSessionHasErrors('publish_date');
         });
     });
+
+    describe('storeAndView', function () {
+        it('creates a new book and redirects to book page', function () {
+            $user = User::factory()->create();
+            $bookData = [
+                'title' => 'Test Book',
+                'author' => 'Test Author',
+                'description' => 'A test book',
+                'isbn' => '978-3-16-148410-0',
+                'cover_url' => 'https://example.com/cover.jpg',
+                'external_id' => 'test_external_123',
+                'published_year' => 2023,
+                'publisher' => 'Test Publisher',
+            ];
+
+            $response = $this->actingAs($user)->post(route('books.store-and-view'), $bookData);
+
+            $response->assertRedirect();
+
+            $this->assertDatabaseHas('books', [
+                'title' => 'Test Book',
+                'author' => 'Test Author',
+                'external_id' => 'test_external_123',
+            ]);
+
+            $book = Book::where('external_id', 'test_external_123')->first();
+            $response->assertRedirect(route('books.show', $book));
+        });
+
+        it('redirects to existing book if external_id already exists', function () {
+            $user = User::factory()->create();
+            $existingBook = Book::factory()->create([
+                'external_id' => 'existing_external_id',
+            ]);
+            $bookData = [
+                'title' => 'Different Title',
+                'author' => 'Different Author',
+                'external_id' => 'existing_external_id',
+            ];
+
+            $response = $this->actingAs($user)->post(route('books.store-and-view'), $bookData);
+
+            $response->assertRedirect(route('books.show', $existingBook));
+
+            expect(Book::where('external_id', 'existing_external_id')->count())->toBe(1);
+        });
+
+        it('requires authentication', function () {
+            $bookData = [
+                'title' => 'Test Book',
+                'author' => 'Test Author',
+            ];
+
+            $response = $this->post(route('books.store-and-view'), $bookData);
+
+            $response->assertRedirect(route('login'));
+        });
+
+        it('validates required fields', function () {
+            $user = User::factory()->create();
+
+            $response = $this->actingAs($user)->post(route('books.store-and-view'), []);
+
+            $response->assertSessionHasErrors(['title', 'author']);
+        });
+    });
 });

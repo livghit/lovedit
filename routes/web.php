@@ -22,6 +22,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('books/{book}', [\App\Http\Controllers\BookController::class, 'show'])->name('books.show');
     Route::post('books', [\App\Http\Controllers\BookController::class, 'store'])->name('books.store');
     Route::post('books/manual', [\App\Http\Controllers\BookController::class, 'storeManual'])->name('books.store-manual');
+    Route::post('books/store-and-view', [\App\Http\Controllers\BookController::class, 'storeAndView'])->name('books.store-and-view');
 
     // Reviews routes
     Route::get('reviews', [\App\Http\Controllers\ReviewController::class, 'index'])->name('reviews.index');

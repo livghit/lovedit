@@ -66,6 +66,9 @@ export default function BooksSearch({
     const [hasOnlineOption, setHasOnlineOption] = useState(false);
     const [searchMessage, setSearchMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [savingBookId, setSavingBookId] = useState<string | number | null>(
+        null,
+    );
 
     // Keep local state in sync when server-provided query changes between visits
     useEffect(() => {
@@ -106,11 +109,24 @@ export default function BooksSearch({
             setSearchMode(data.is_local ? 'local' : 'online');
             setHasOnlineOption(data.has_online_option);
             setSearchMessage(data.message);
+
+            // Auto-trigger online search if local search returned no results
+            if (!online && data.books.length === 0 && data.has_online_option) {
+                console.log(
+                    'No local results found, searching online automatically...',
+                );
+                // Small delay to prevent jarring UX
+                setTimeout(() => {
+                    performSearch(true);
+                }, 300);
+            }
         } catch (err) {
             setError('Failed to search books. Please try again.');
             console.error('Search error:', err);
         } finally {
-            setIsLoading(false);
+            if (online || !hasOnlineOption) {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -124,7 +140,34 @@ export default function BooksSearch({
     };
 
     const handleBookClick = (book: Book) => {
-        router.visit(`/books/${book.id}`);
+        // Check if this is an online book (has external_id but id is string)
+        const isOnlineBook = book.external_id && typeof book.id === 'string';
+
+        if (isOnlineBook) {
+            // Save the book first, then navigate
+            setSavingBookId(book.id);
+
+            router.post(
+                '/books/store-and-view',
+                {
+                    title: book.title,
+                    author: book.author,
+                    isbn: book.isbn,
+                    cover_url: book.cover_url,
+                    external_id: book.external_id,
+                    ol_work_key: book.ol_work_key,
+                    publisher: book.publisher,
+                    publish_date: book.publish_date,
+                },
+                {
+                    preserveScroll: true,
+                    onFinish: () => setSavingBookId(null),
+                },
+            );
+        } else {
+            // Local book, navigate directly
+            router.visit(`/books/${book.id}`);
+        }
     };
 
     const handleAddToReviewList = (e: React.MouseEvent, book: Book) => {
@@ -237,6 +280,7 @@ export default function BooksSearch({
                                     key={`${book.external_id || book.id}-${index}`}
                                     book={book}
                                     onClick={() => handleBookClick(book)}
+                                    isLoading={savingBookId === book.id}
                                     actionButton={{
                                         icon: <Heart className="h-4 w-4" />,
                                         onClick: (e) =>
