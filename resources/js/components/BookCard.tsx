@@ -18,6 +18,7 @@ interface BookCardProps {
         onClick: (e: React.MouseEvent) => void;
         label: string;
         variant?: 'default' | 'ghost' | 'outline';
+        isActive?: boolean;
     };
     isLoading?: boolean;
 }
@@ -82,7 +83,11 @@ export default function BookCard({
                                     size="icon"
                                     variant={actionButton.variant ?? 'default'}
                                     onClick={actionButton.onClick}
-                                    className="h-8 w-8 rounded-full shadow-lg"
+                                    className={cn(
+                                        'h-8 w-8 rounded-full shadow-lg',
+                                        actionButton.isActive &&
+                                            'bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700',
+                                    )}
                                     aria-label={actionButton.label}
                                 >
                                     {actionButton.icon}

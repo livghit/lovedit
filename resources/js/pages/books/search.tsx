@@ -69,6 +69,9 @@ export default function BooksSearch({
     const [savingBookId, setSavingBookId] = useState<string | number | null>(
         null,
     );
+    const [addedBookIds, setAddedBookIds] = useState<Set<string | number>>(
+        new Set(),
+    );
 
     // Keep local state in sync when server-provided query changes between visits
     useEffect(() => {
@@ -176,19 +179,22 @@ export default function BooksSearch({
 
         console.log('Adding book to review list:', book);
 
+        // Check if this is a local book (has numeric ID > 0) or online book
+        const isLocalBook = typeof book.id === 'number' && book.id > 0;
+
         // Use Inertia to post the book data
         router.post(
             '/to-review-lists',
             {
-                book_id: typeof book.id === 'number' ? book.id : undefined,
-                title: book.title,
-                author: book.author,
-                isbn: book.isbn,
-                cover_url: book.cover_url,
-                external_id: book.external_id,
-                ol_work_key: book.ol_work_key,
-                publisher: book.publisher,
-                publish_date: book.publish_date,
+                book_id: isLocalBook ? book.id : undefined,
+                title: isLocalBook ? undefined : book.title,
+                author: isLocalBook ? undefined : book.author,
+                isbn: isLocalBook ? undefined : book.isbn,
+                cover_url: isLocalBook ? undefined : book.cover_url,
+                external_id: isLocalBook ? undefined : book.external_id,
+                ol_work_key: isLocalBook ? undefined : book.ol_work_key,
+                publisher: isLocalBook ? undefined : book.publisher,
+                publish_date: isLocalBook ? undefined : book.publish_date,
             },
             {
                 preserveScroll: true,
@@ -196,6 +202,8 @@ export default function BooksSearch({
                 only: [],
                 onSuccess: () => {
                     console.log('Book added successfully!');
+                    // Add book to the set of added books
+                    setAddedBookIds((prev) => new Set(prev).add(book.id));
                 },
                 onError: (errors) => {
                     console.error('Error adding book:', errors);
@@ -287,6 +295,7 @@ export default function BooksSearch({
                                             handleAddToReviewList(e, book),
                                         label: 'Add to review list',
                                         variant: 'ghost',
+                                        isActive: addedBookIds.has(book.id),
                                     }}
                                 />
                             ))}
