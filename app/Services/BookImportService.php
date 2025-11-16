@@ -9,24 +9,43 @@ class BookImportService
     /**
      * Upsert a book from Open Library data
      */
-    public function upsertFromOpenLibrary(array $bookData): Book
+    public function upsertFromOpenLibrary(array $bookData, ?BookSearchService $searchService = null): Book
     {
         // Find existing book by title and author
         $existing = Book::where('title', $bookData['title'])
             ->where('author', $bookData['author'])
             ->first();
 
+        // Fetch additional work details if we have a work key and search service
+        $workDetails = [];
+        if ($searchService && isset($bookData['ol_work_key'])) {
+            $workDetails = $searchService->fetchWorkDetails($bookData['ol_work_key']) ?? [];
+        }
+
+        // Merge work details with book data
+        $mergedData = array_merge($bookData, $workDetails);
+
         if ($existing) {
             // Update only metadata fields
             $existing->update([
-                'description' => $bookData['description'] ?? $existing->description,
-                'isbn' => $bookData['isbn'] ?? $existing->isbn,
-                'published_year' => $bookData['published_year'] ?? $existing->published_year,
-                'publisher' => $bookData['publisher'] ?? $existing->publisher,
-                'ol_work_key' => $bookData['ol_work_key'] ?? $existing->ol_work_key,
-                'ol_cover_id' => $bookData['ol_cover_id'] ?? $existing->ol_cover_id,
-                'external_id' => $bookData['external_id'] ?? $existing->external_id,
-                'cover_url' => $bookData['cover_url'] ?? $existing->cover_url,
+                'description' => $mergedData['description'] ?? $existing->description,
+                'isbn' => $mergedData['isbn'] ?? $existing->isbn,
+                'published_year' => $mergedData['published_year'] ?? $existing->published_year,
+                'first_publish_date' => $mergedData['first_publish_date'] ?? $existing->first_publish_date,
+                'publisher' => $mergedData['publisher'] ?? $existing->publisher,
+                'ol_work_key' => $mergedData['ol_work_key'] ?? $existing->ol_work_key,
+                'ol_cover_id' => $mergedData['ol_cover_id'] ?? $existing->ol_cover_id,
+                'external_id' => $mergedData['external_id'] ?? $existing->external_id,
+                'cover_url' => $mergedData['cover_url'] ?? $existing->cover_url,
+                'subtitle' => $mergedData['subtitle'] ?? $existing->subtitle,
+                'subjects' => $mergedData['subjects'] ?? $existing->subjects,
+                'excerpt' => $mergedData['excerpt'] ?? $existing->excerpt,
+                'links' => $mergedData['links'] ?? $existing->links,
+                'number_of_pages' => $mergedData['number_of_pages'] ?? $existing->number_of_pages,
+                'languages' => $mergedData['languages'] ?? $existing->languages,
+                'edition_count' => $mergedData['edition_count'] ?? $existing->edition_count,
+                'ratings_average' => $mergedData['ratings_average'] ?? $existing->ratings_average,
+                'ratings_count' => $mergedData['ratings_count'] ?? $existing->ratings_count,
                 'last_synced_at' => now(),
             ]);
 
@@ -35,16 +54,26 @@ class BookImportService
 
         // Create new book
         return Book::create([
-            'title' => $bookData['title'],
-            'author' => $bookData['author'],
-            'description' => $bookData['description'] ?? null,
-            'isbn' => $bookData['isbn'] ?? null,
-            'published_year' => $bookData['published_year'] ?? null,
-            'publisher' => $bookData['publisher'] ?? null,
-            'external_id' => $bookData['external_id'] ?? null,
-            'cover_url' => $bookData['cover_url'] ?? null,
-            'ol_work_key' => $bookData['ol_work_key'] ?? null,
-            'ol_cover_id' => $bookData['ol_cover_id'] ?? null,
+            'title' => $mergedData['title'],
+            'subtitle' => $mergedData['subtitle'] ?? null,
+            'author' => $mergedData['author'],
+            'description' => $mergedData['description'] ?? null,
+            'isbn' => $mergedData['isbn'] ?? null,
+            'published_year' => $mergedData['published_year'] ?? null,
+            'first_publish_date' => $mergedData['first_publish_date'] ?? null,
+            'publisher' => $mergedData['publisher'] ?? null,
+            'external_id' => $mergedData['external_id'] ?? null,
+            'cover_url' => $mergedData['cover_url'] ?? null,
+            'ol_work_key' => $mergedData['ol_work_key'] ?? null,
+            'ol_cover_id' => $mergedData['ol_cover_id'] ?? null,
+            'subjects' => $mergedData['subjects'] ?? null,
+            'excerpt' => $mergedData['excerpt'] ?? null,
+            'links' => $mergedData['links'] ?? null,
+            'number_of_pages' => $mergedData['number_of_pages'] ?? null,
+            'languages' => $mergedData['languages'] ?? null,
+            'edition_count' => $mergedData['edition_count'] ?? 1,
+            'ratings_average' => $mergedData['ratings_average'] ?? null,
+            'ratings_count' => $mergedData['ratings_count'] ?? 0,
             'cover_stored_locally' => false,
             'discovered_via_search' => false,
             'first_discovered_at' => now(),
@@ -70,6 +99,11 @@ class BookImportService
             'cover_url' => isset($data['cover_i']) ? "https://covers.openlibrary.org/b/id/{$data['cover_i']}-M.jpg" : null,
             'ol_cover_id' => $data['cover_i'] ?? null,
             'ol_work_key' => $data['key'] ?? null,
+            'edition_count' => $data['edition_count'] ?? 1,
+            'languages' => $data['language'] ?? null,
+            'number_of_pages' => $data['number_of_pages_median'] ?? null,
+            'ratings_average' => $data['ratings_average'] ?? null,
+            'ratings_count' => $data['ratings_count'] ?? 0,
         ];
     }
 

@@ -15,12 +15,14 @@ class Book extends Model
 
     protected $fillable = [
         'title',
+        'subtitle',
         'author',
         'description',
         'isbn',
         'cover_url',
         'external_id',
         'published_year',
+        'first_publish_date',
         'publisher',
         'ol_work_key',
         'ol_cover_id',
@@ -34,6 +36,14 @@ class Book extends Model
         'ol_last_synced_at',
         'ol_sync_status',
         'cached_from_ol',
+        'subjects',
+        'excerpt',
+        'links',
+        'number_of_pages',
+        'languages',
+        'edition_count',
+        'ratings_average',
+        'ratings_count',
     ];
 
     protected function casts(): array
@@ -48,6 +58,13 @@ class Book extends Model
             'last_synced_at' => 'datetime',
             'is_user_created' => 'boolean',
             'search_count' => 'integer',
+            'subjects' => 'array',
+            'links' => 'array',
+            'languages' => 'array',
+            'number_of_pages' => 'integer',
+            'edition_count' => 'integer',
+            'ratings_average' => 'decimal:2',
+            'ratings_count' => 'integer',
         ];
     }
 

@@ -57,14 +57,13 @@ class BookSearchService
     }
 
     /**
-     * Search Open Library API and save results
+     * Search Open Library API and return results (without saving to database)
      */
     public function searchOnline(string $query): SearchResult
     {
         $cacheKey = $this->getCacheKey('search', $query);
-        $isFromCache = Cache::has($cacheKey);
 
-        // Store both formatted and raw results
+        // Cache the API response
         $cached = Cache::remember($cacheKey, self::CACHE_DURATION_SEARCH, function () use ($query) {
             // Check rate limit
             if (! $this->checkRateLimit()) {
@@ -86,9 +85,12 @@ class BookSearchService
                 $data = $response->json();
                 $raw = $data['docs'] ?? [];
 
+                // Filter out books without covers
+                $rawFiltered = array_filter($raw, fn ($book) => isset($book['cover_i']) && $book['cover_i']);
+
                 return [
-                    'raw' => $raw,
-                    'formatted' => $this->formatSearchResults($data),
+                    'raw' => $rawFiltered,
+                    'formatted' => $this->formatSearchResults(['docs' => $rawFiltered]),
                 ];
             } catch (\Exception $e) {
                 \Log::error('Book search failed: '.$e->getMessage());
@@ -97,16 +99,14 @@ class BookSearchService
             }
         });
 
-        // Save results to database only on fresh API calls (not from cache)
-        if (! $isFromCache && ! empty($cached['raw'])) {
-            $this->saveSearchResults(collect($cached['raw']));
-        }
+        // Convert formatted results to collection of books (not saved to DB yet)
+        $books = collect($cached['formatted'])->map(function ($bookData) {
+            // Create a Book model instance without saving it
+            $book = new Book($bookData);
+            $book->id = $bookData['external_id'] ?? null; // Use external_id as temporary ID for display
 
-        // Fetch the saved books from DB
-        $books = Book::where('title', 'LIKE', "%{$query}%")
-            ->orWhere('author', 'LIKE', "%{$query}%")
-            ->limit(20)
-            ->get();
+            return $book;
+        });
 
         return SearchResult::online($books, $query, count($cached['formatted']));
     }
@@ -127,15 +127,26 @@ class BookSearchService
 
         foreach ($apiResults as $result) {
             try {
-                $bookData = $this->importService->formatOpenLibraryData($result);
-                $book = $this->importService->upsertFromOpenLibrary($bookData);
+                // Skip books without covers
+                if (! isset($result['cover_i']) || ! $result['cover_i']) {
+                    continue;
+                }
 
+                $bookData = $this->importService->formatOpenLibraryData($result);
+
+                // Import book WITHOUT fetching work details (much faster)
+                $book = $this->importService->upsertFromOpenLibrary($bookData, null);
+
+                // Download cover locally in background (optional, can be commented out for even faster imports)
                 if ($result['cover_i'] ?? null) {
                     $this->downloadCoverLocally($result['cover_i'], $result['cover_url'] ?? null);
                 }
 
                 $book->markAsDiscoveredOnline();
                 $book->update(['sync_batch_id' => $batch->id]);
+
+                // Dispatch background job to fetch work details (description, subjects, etc.)
+                \App\Jobs\FetchBookWorkDetails::dispatch($book);
 
                 $savedCount++;
             } catch (\Exception $e) {
@@ -430,6 +441,96 @@ class BookSearchService
         $key = 'ol_api_rate_limit';
 
         return RateLimiter::attempts($key);
+    }
+
+    /**
+     * Fetch detailed work information from OpenLibrary Works API
+     *
+     * @param  string  $workKey  OpenLibrary work key (e.g., /works/OL2010879W)
+     * @return array|null Work details including description, subjects, etc.
+     */
+    public function fetchWorkDetails(string $workKey): ?array
+    {
+        $cacheKey = $this->getCacheKey('work_details', $workKey);
+
+        return Cache::remember($cacheKey, self::CACHE_DURATION_DETAILS, function () use ($workKey) {
+            // Check rate limit
+            if (! $this->checkRateLimit()) {
+                \Log::warning('Work details rate limit exceeded', ['workKey' => $workKey]);
+
+                return null;
+            }
+
+            try {
+                // Ensure workKey starts with /works/
+                $workKey = str_starts_with($workKey, '/works/') ? $workKey : "/works/{$workKey}";
+
+                $url = "https://openlibrary.org{$workKey}.json";
+                $response = Http::timeout(10)->get($url);
+
+                if ($response->failed()) {
+                    \Log::warning('Failed to fetch work details', ['workKey' => $workKey, 'status' => $response->status()]);
+
+                    return null;
+                }
+
+                $data = $response->json();
+
+                return $this->formatWorkDetails($data);
+            } catch (\Exception $e) {
+                \Log::error('Fetch work details failed: '.$e->getMessage(), ['workKey' => $workKey]);
+
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Format work details from OpenLibrary Works API
+     */
+    protected function formatWorkDetails(array $data): array
+    {
+        $formatted = [];
+
+        // Extract description (can be string or object with 'value' key)
+        if (isset($data['description'])) {
+            $formatted['description'] = is_string($data['description'])
+                ? $data['description']
+                : ($data['description']['value'] ?? null);
+        }
+
+        // Extract subjects
+        if (isset($data['subjects']) && is_array($data['subjects'])) {
+            $formatted['subjects'] = $data['subjects'];
+        }
+
+        // Extract subtitle
+        if (isset($data['subtitle'])) {
+            $formatted['subtitle'] = $data['subtitle'];
+        }
+
+        // Extract first publish date
+        if (isset($data['first_publish_date'])) {
+            $formatted['first_publish_date'] = $data['first_publish_date'];
+        }
+
+        // Extract excerpts (take first one if available)
+        if (isset($data['excerpts']) && is_array($data['excerpts']) && count($data['excerpts']) > 0) {
+            $excerpt = $data['excerpts'][0];
+            $formatted['excerpt'] = is_string($excerpt) ? $excerpt : ($excerpt['excerpt'] ?? $excerpt['text'] ?? null);
+        }
+
+        // Extract links
+        if (isset($data['links']) && is_array($data['links'])) {
+            $formatted['links'] = array_map(function ($link) {
+                return [
+                    'title' => $link['title'] ?? null,
+                    'url' => $link['url'] ?? null,
+                ];
+            }, $data['links']);
+        }
+
+        return $formatted;
     }
 
     /**
