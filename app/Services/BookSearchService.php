@@ -45,8 +45,12 @@ class BookSearchService
      */
     public function searchLocal(string $query): SearchResult
     {
-        $books = Book::where('title', 'LIKE', "%{$query}%")
-            ->orWhere('author', 'LIKE', "%{$query}%")
+        $books = Book::where(function ($q) use ($query) {
+            $q->where('title', 'LIKE', "%{$query}%")
+                ->orWhere('author', 'LIKE', "%{$query}%");
+        })
+            ->whereNotNull('cover_url')
+            ->where('cover_url', '!=', '')
             ->limit(20)
             ->get();
 

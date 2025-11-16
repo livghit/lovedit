@@ -176,6 +176,7 @@ describe('BookController', function () {
             $bookData = [
                 'title' => 'Different Title',
                 'author' => 'Different Author',
+                'cover_url' => 'https://example.com/cover.jpg',
                 'external_id' => 'existing_external_id',
             ];
 
@@ -331,6 +332,7 @@ describe('BookController', function () {
             $bookData = [
                 'title' => 'Different Title',
                 'author' => 'Different Author',
+                'cover_url' => 'https://example.com/cover.jpg',
                 'external_id' => 'existing_external_id',
             ];
 

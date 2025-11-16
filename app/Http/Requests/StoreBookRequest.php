@@ -18,7 +18,7 @@ class StoreBookRequest extends FormRequest
             'author' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'isbn' => ['nullable', 'string', 'max:20'],
-            'cover_url' => ['nullable', 'url'],
+            'cover_url' => ['required', 'url'],
             'external_id' => ['nullable', 'string', 'max:255'],
             'published_year' => ['nullable', 'integer', 'min:1000', 'max:2100'],
             'publisher' => ['nullable', 'string', 'max:255'],
@@ -30,6 +30,7 @@ class StoreBookRequest extends FormRequest
         return [
             'title.required' => 'Book title is required.',
             'author.required' => 'Author name is required.',
+            'cover_url.required' => 'Cover URL is required.',
             'cover_url.url' => 'Cover URL must be a valid URL.',
         ];
     }

@@ -196,6 +196,7 @@ describe('ToReviewListController', function () {
             $bookData = [
                 'title' => 'The Great Gatsby',
                 'author' => 'F. Scott Fitzgerald',
+                'cover_url' => 'https://covers.openlibrary.org/b/id/12345-M.jpg',
                 'external_id' => 'OL12345M',
             ];
 
