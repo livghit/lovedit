@@ -1,16 +1,23 @@
 import AppLogoIcon from '@/components/app-logo-icon';
 import { Button } from '@/components/ui/button';
 import {
-    Card,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+
 } from '@/components/ui/card';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import { dashboard, login, register } from '@/routes';
 import { type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { BookOpenCheck, Lock, Search, Sparkles } from 'lucide-react';
+import {
+    ArrowRight,
+    BookOpenCheck,
+    CheckCircle2,
+    Github,
+    Globe2,
+    Lock,
+    Search,
+    Sparkles,
+    Twitter,
+    Zap,
+} from 'lucide-react';
 
 export default function Welcome({
     canRegister = true,
@@ -19,243 +26,227 @@ export default function Welcome({
 }) {
     const { auth, name, quote } = usePage<SharedData>().props;
 
-    const primaryCtaHref = auth.user
-        ? dashboard()
-        : canRegister
-          ? register()
-          : login();
-    const primaryCtaLabel = auth.user
-        ? 'Go to Dashboard'
-        : canRegister
-          ? 'Get Started'
-          : 'Sign In';
-
     return (
         <>
-            <Head title={`${name} – Read. Review. Remember.`} />
+            <Head title={`${name} – Enterprise Grade Reading Companion`} />
 
-            <div className="relative flex min-h-screen flex-col bg-background text-foreground">
-                {/* Inner framed container */}
-                <div className="relative mx-auto my-4 w-[calc(100%-1rem)] max-w-[1280px] rounded-2xl border bg-background shadow-[0_0_0_1px_rgba(0,0,0,0.06)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
-                    {/* Inner edge lines */}
-                    <div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0 rounded-2xl"
-                    >
-                        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/10 to-transparent dark:via-white/10" />
-                        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-black/10 to-transparent dark:via-white/10" />
-                        <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-black/10 to-transparent dark:via-white/10" />
-                        <div className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-black/10 to-transparent dark:via-white/10" />
-                    </div>
+            <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-primary-foreground font-sans antialiased">
+                {/* Navbar */}
+                <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-background/80 backdrop-blur-md">
+                    <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
+                        <Link href={dashboard()} className="flex items-center gap-2">
+                            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                                <AppLogoIcon className="size-5 fill-current" />
+                            </div>
+                            <span className="text-lg font-bold tracking-tight">{name}</span>
+                        </Link>
 
-                    {/* Top navigation */}
-                    <header className="relative z-10 w-full">
-                        <div className="mx-auto w-full max-w-7xl px-6 py-6 md:px-10">
-                            <nav className="flex items-center justify-between">
-                                <Link
-                                    href={dashboard()}
-                                    className="flex items-center gap-2"
-                                >
-                                    <AppLogoIcon className="size-8 fill-current text-black dark:text-white" />
-                                    <span className="hidden text-sm font-semibold md:inline">
-                                        {name}
-                                    </span>
+                        <nav className="hidden md:flex items-center gap-8">
+                            {/* Placeholder for future sections */}
+                        </nav>
+
+                        <div className="flex items-center gap-4">
+                            {auth.user ? (
+                                <Link href={dashboard()}>
+                                    <Button variant="default" size="sm">Dashboard</Button>
                                 </Link>
-
-                                <div className="flex items-center gap-3">
-                                    {auth.user ? (
-                                        <Link
-                                            prefetch
-                                            href={dashboard()}
-                                            className="text-sm text-muted-foreground hover:text-foreground"
-                                        >
-                                            Dashboard
-                                        </Link>
-                                    ) : (
-                                        <>
-                                            <Link
-                                                prefetch
-                                                href={login()}
-                                                className="text-sm text-muted-foreground hover:text-foreground"
-                                            >
-                                                Log in
-                                            </Link>
-                                            {canRegister && (
-                                                <Link
-                                                    prefetch
-                                                    href={register()}
-                                                    className="text-sm text-muted-foreground hover:text-foreground"
-                                                >
-                                                    Register
-                                                </Link>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            </nav>
-                        </div>
-                    </header>
-
-                    {/* Hero */}
-                    <section className="relative isolate">
-                        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-6 pt-16 pb-8 md:px-10 lg:grid-cols-2 lg:gap-16 lg:pt-24 lg:pb-16">
-                            <div>
-                                <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-muted-foreground">
-                                    <Sparkles className="size-3.5" />
-                                    New: Hybrid local + online search
-                                </div>
-                                <h1 className="mt-5 text-4xl leading-tight font-semibold tracking-tight text-balance md:text-5xl">
-                                    Read deeper. Capture smarter. Remember
-                                    longer.
-                                </h1>
-                                <p className="mt-4 max-w-prose text-base text-pretty text-muted-foreground md:text-lg">
-                                    LovedIt is your elegant reading companion
-                                    for 2025 — craft beautiful reviews, search
-                                    your library instantly, and turn highlights
-                                    into insights.
-                                </p>
-                                <div className="mt-6 flex flex-wrap items-center gap-3">
-                                    <Link prefetch href={primaryCtaHref}>
-                                        <Button size="lg" className="px-6">
-                                            {primaryCtaLabel}
-                                        </Button>
+                            ) : (
+                                <>
+                                    <Link href={login()} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                                        Log in
                                     </Link>
-                                    {!auth.user && (
-                                        <Link
-                                            prefetch
-                                            href={login()}
-                                            className="text-sm text-muted-foreground hover:text-foreground"
-                                        >
-                                            Or sign in
+                                    {canRegister && (
+                                        <Link href={register()}>
+                                            <Button size="sm">Get Started</Button>
                                         </Link>
                                     )}
-                                </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </header>
 
-                                <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                    <Stat label="Books tracked" value="10k+" />
-                                    <Stat
-                                        label="Reviews written"
-                                        value="120k+"
+                <main>
+                    {/* Hero Section */}
+                    <section className="relative isolate pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden">
+                        {/* Background Effects */}
+                        <div className="absolute inset-0 -z-10 h-full w-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+                        <div className="absolute top-0 left-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-primary/20 blur-[100px] opacity-50"></div>
+
+                        <div className="mx-auto max-w-7xl px-6 text-center lg:px-8">
+                            <div className="mx-auto mb-8 flex max-w-fit items-center justify-center space-x-2 overflow-hidden rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 backdrop-blur transition-all hover:border-primary/40 hover:bg-primary/20">
+                                <Sparkles className="size-4 text-primary" />
+                                <p className="text-sm font-semibold text-primary">
+                                    Introducing Hybrid Search v2.0
+                                </p>
+                            </div>
+
+                            <h1 className="mx-auto max-w-4xl text-5xl font-bold tracking-tight text-foreground sm:text-7xl">
+                                Master your reading list with <span className="text-primary">precision</span>.
+                            </h1>
+
+                            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
+                                The enterprise-grade platform for serious readers. Track, review, and remember every book with our advanced recall engine and seamless library synchronization.
+                            </p>
+
+                            <div className="mt-10 flex items-center justify-center gap-x-6">
+                                <Link href={auth.user ? dashboard() : register()}>
+                                    <Button size="lg" className="h-12 px-8 text-base shadow-lg shadow-primary/25">
+                                        {auth.user ? 'Go to Dashboard' : 'Start Free Trial'}
+                                        <ArrowRight className="ml-2 size-4" />
+                                    </Button>
+                                </Link>
+                                {!auth.user && (
+                                    <Link href={login()} className="text-sm font-semibold leading-6 text-foreground hover:text-primary transition-colors">
+                                        Existing customer? <span aria-hidden="true">→</span>
+                                    </Link>
+                                )}
+                            </div>
+
+                            {/* Hero Image / Dashboard Preview */}
+                            <div className="mt-16 flow-root sm:mt-24">
+                                <div className="-m-2 rounded-xl bg-gray-900/5 p-2 ring-1 ring-inset ring-gray-900/10 dark:bg-white/5 dark:ring-white/10 lg:-m-4 lg:rounded-2xl lg:p-4">
+                                    <div className="relative rounded-lg bg-card shadow-2xl overflow-hidden border border-border/50 aspect-[16/9]">
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-background to-background z-0"></div>
+                                        <div className="relative z-10 flex h-full items-center justify-center text-muted-foreground">
+                                            <div className="text-center">
+                                                <AppLogoIcon className="mx-auto size-20 opacity-20" />
+                                                <p className="mt-4 font-medium">Dashboard Preview</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Stats Section */}
+                    <section className="border-y border-white/5 bg-white/5 py-12">
+                        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+                            <dl className="grid grid-cols-1 gap-x-8 gap-y-16 text-center lg:grid-cols-3">
+                                <div className="mx-auto flex max-w-xs flex-col gap-y-4">
+                                    <dt className="text-base leading-7 text-muted-foreground">Books Tracked</dt>
+                                    <dd className="order-first text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">10k+</dd>
+                                </div>
+                                <div className="mx-auto flex max-w-xs flex-col gap-y-4">
+                                    <dt className="text-base leading-7 text-muted-foreground">Active Readers</dt>
+                                    <dd className="order-first text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">50k+</dd>
+                                </div>
+                                <div className="mx-auto flex max-w-xs flex-col gap-y-4">
+                                    <dt className="text-base leading-7 text-muted-foreground">Reviews Written</dt>
+                                    <dd className="order-first text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">120k+</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </section>
+
+                    {/* Features Grid */}
+                    <section id="features" className="py-24 sm:py-32">
+                        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+                            <div className="mx-auto max-w-2xl text-center">
+                                <h2 className="text-base font-semibold leading-7 text-primary">Everything you need</h2>
+                                <p className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                                    Built for the modern intellectual
+                                </p>
+                                <p className="mt-6 text-lg leading-8 text-muted-foreground">
+                                    Our platform provides the tools you need to build a digital library that lasts a lifetime.
+                                </p>
+                            </div>
+
+                            <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+                                <div className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
+                                    <FeatureCard
+                                        icon={BookOpenCheck}
+                                        title="Beautiful Reviews"
+                                        description="Compose thoughtful reviews with our distraction-free editor. Support for markdown, rich formatting, and embedded media."
                                     />
-                                    <Stat
-                                        label="Avg. recall boost"
-                                        value="2.4x"
+                                    <FeatureCard
+                                        icon={Search}
+                                        title="Hybrid Search Engine"
+                                        description="Instantly search across your local library and millions of online books simultaneously. Never miss a title."
+                                    />
+                                    <FeatureCard
+                                        icon={Lock}
+                                        title="Private & Secure"
+                                        description="Your data is yours. We use enterprise-grade encryption and offer full data export capabilities at any time."
+                                    />
+                                    <FeatureCard
+                                        icon={Zap}
+                                        title="Instant Sync"
+                                        description="Changes reflect instantly across all your devices. Start reading on your phone, finish reviewing on your desktop."
+                                    />
+                                    <FeatureCard
+                                        icon={Globe2}
+                                        title="Global Database"
+                                        description="Access metadata for over 30 million books. Automatic cover art, author details, and publication info."
+                                    />
+                                    <FeatureCard
+                                        icon={CheckCircle2}
+                                        title="Reading Goals"
+                                        description="Set annual reading challenges and track your progress with beautiful visualizations and insights."
                                     />
                                 </div>
                             </div>
-
-                            <div className="relative">
-                                <div className="relative overflow-hidden rounded-xl border bg-card shadow-sm">
-                                    <PlaceholderPattern className="absolute inset-0 -z-10 h-full w-full stroke-black/5 dark:stroke-white/10" />
-                                    <div className="aspect-[16/10] bg-gradient-to-br from-background to-muted/60" />
-                                </div>
-                                <div className="pointer-events-none absolute -top-6 -left-6 size-24 rounded-xl border bg-background/60 p-3 shadow-sm backdrop-blur">
-                                    <AppLogoIcon className="size-full fill-current text-black dark:text-white" />
-                                </div>
-                            </div>
                         </div>
                     </section>
 
-                    {/* Features */}
-                    <section className="mx-auto w-full max-w-7xl px-6 py-12 md:px-10 lg:py-16">
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                            <Feature
-                                icon={BookOpenCheck}
-                                title="Beautiful reviews"
-                            >
-                                Compose thoughtful reviews with a
-                                distraction-free editor and rich formatting.
-                            </Feature>
-                            <Feature icon={Search} title="Hybrid search">
-                                Find books locally first, then seamlessly expand
-                                to online sources.
-                            </Feature>
-                            <Feature icon={Lock} title="Private by design">
-                                Your library is yours. 2FA, secure sessions, and
-                                fine-grained control.
-                            </Feature>
+                    {/* Quote Section */}
+                    <section className="relative isolate overflow-hidden bg-primary/5 px-6 py-24 sm:py-32 lg:px-8">
+                        <div className="absolute inset-0 -z-10 bg-[radial-gradient(45rem_50rem_at_top,theme(colors.primary.DEFAULT),transparent)] opacity-10" />
+                        <div className="absolute inset-y-0 right-1/2 -z-10 mr-16 w-[200%] origin-bottom-left skew-x-[-30deg] bg-background shadow-xl shadow-primary/10 ring-1 ring-primary/10 sm:mr-28 lg:mr-0 xl:mr-16 xl:origin-center" />
+
+                        <div className="mx-auto max-w-2xl lg:max-w-4xl">
+                            <figure className="mt-10">
+                                <blockquote className="text-center text-xl font-semibold leading-8 text-foreground sm:text-2xl sm:leading-9">
+                                    <p>“{quote.message}”</p>
+                                </blockquote>
+                                <figcaption className="mt-10">
+                                    <div className="mt-4 flex items-center justify-center space-x-3 text-base">
+                                        <div className="font-semibold text-foreground">{quote.author}</div>
+                                    </div>
+                                </figcaption>
+                            </figure>
                         </div>
                     </section>
+                </main>
 
-                    {/* Quote */}
-                    <section className="mx-auto w-full max-w-5xl px-6 pb-16 md:px-10">
-                        <Card className="bg-gradient-to-b from-muted/40 to-transparent">
-                            <CardHeader>
-                                <CardTitle className="text-center text-xl text-balance md:text-2xl">
-                                    “{quote.message}”
-                                </CardTitle>
-                                <CardDescription className="text-center">
-                                    — {quote.author}
-                                </CardDescription>
-                            </CardHeader>
-                        </Card>
-                    </section>
-
-                    {/* Footer */}
-                    <footer className="mt-auto border-t">
-                        <div className="mx-auto w-full max-w-7xl px-6 py-8 text-xs text-muted-foreground md:px-10">
-                            <div className="flex items-center justify-between">
-                                <span>
-                                    © {new Date().getFullYear()} {name}
-                                </span>
-                                <div className="flex items-center gap-4">
-                                    <a
-                                        href="https://laravel.com"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="hover:text-foreground"
-                                    >
-                                        Built on Laravel
-                                    </a>
-                                    <a
-                                        href="https://inertiajs.com"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="hover:text-foreground"
-                                    >
-                                        Inertia v2
-                                    </a>
-                                </div>
-                            </div>
+                {/* Footer */}
+                <footer className="bg-background border-t border-white/10">
+                    <div className="mx-auto max-w-7xl px-6 py-12 md:flex md:items-center md:justify-between lg:px-8">
+                        <div className="flex justify-center space-x-6 md:order-2">
+                            <a href="#" className="text-muted-foreground hover:text-foreground">
+                                <span className="sr-only">Twitter</span>
+                                <Twitter className="h-6 w-6" />
+                            </a>
+                            <a href="#" className="text-muted-foreground hover:text-foreground">
+                                <span className="sr-only">GitHub</span>
+                                <Github className="h-6 w-6" />
+                            </a>
                         </div>
-                    </footer>
-                </div>
+                        <div className="mt-8 md:order-1 md:mt-0">
+                            <p className="text-center text-xs leading-5 text-muted-foreground">
+                                &copy; {new Date().getFullYear()} {name}. All rights reserved. Built on Laravel & Inertia.
+                            </p>
+                        </div>
+                    </div>
+                </footer>
             </div>
         </>
     );
 }
 
-function Feature({
-    icon: Icon,
-    title,
-    children,
-}: {
-    icon: React.ComponentType<{ className?: string }>;
-    title: string;
-    children: React.ReactNode;
-}) {
+function FeatureCard({ icon: Icon, title, description }: { icon: any, title: string, description: string }) {
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-start gap-3">
-                <div className="rounded-md border bg-background p-2">
-                    <Icon className="size-5" />
+        <div className="flex flex-col bg-card/50 p-6 rounded-2xl border border-white/5 hover:border-primary/50 transition-colors">
+            <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-foreground">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
                 </div>
-                <div className="grid">
-                    <CardTitle className="text-base">{title}</CardTitle>
-                    <CardDescription className="mt-1 text-sm leading-relaxed">
-                        {children}
-                    </CardDescription>
-                </div>
-            </CardHeader>
-        </Card>
-    );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="rounded-lg border bg-card p-4 text-center">
-            <div className="text-2xl font-semibold">{value}</div>
-            <div className="text-xs text-muted-foreground">{label}</div>
+                {title}
+            </dt>
+            <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                <p className="flex-auto">{description}</p>
+            </dd>
         </div>
     );
 }

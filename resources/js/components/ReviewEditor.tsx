@@ -240,7 +240,7 @@ export default function ReviewEditor({
         if (currentMd !== value) {
             editor.commands.setContent(basicMarkdownToHtml(value || ''));
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [value, editor]);
 
     const words = (value.trim().match(/\S+/g) || []).length;

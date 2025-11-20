@@ -11,7 +11,7 @@ export default function MarkdownRenderer({
 }: MarkdownRendererProps) {
     // Render with dangerouslySetInnerHTML for formatted text
     const renderFormattedMarkdown = (text: string) => {
-        let html = text
+        const html = text
             // Escape HTML first
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
